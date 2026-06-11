@@ -621,7 +621,16 @@ function renderMain(app) {
 
   // ── COMMISSIONER ──
   if (activeTab === "commissioner") {
-    html += `<div style="font-size:12px;color:#993C1D;font-weight:600;margin-bottom:14px;">Commissioner Mode · Enter final scores to auto-settle all bets</div>`;
+    // Check if force-inject bets have already been added
+    const injectedAlready = bets.some(b => b.player === "Brez" && b.matchLabel === "Korea Republic vs Czechia" && b.wager === 1000);
+    html += `<div style="font-size:12px;color:#993C1D;font-weight:600;margin-bottom:8px;">Commissioner Mode · Enter final scores to auto-settle all bets</div>`;
+    if (!injectedAlready) {
+      html += `<div style="background:#FFF8E6;border:1px solid #F0D080;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;">
+        <strong>4 bets need to be manually entered</strong> (placed before app was set up)<br>
+        <span style="color:#666;">Brez: Korea/Czechia Over 2.5 · 1000 shares &nbsp;|&nbsp; AK: Mexico Win · 235 shares &nbsp;|&nbsp; AK: Korea/Czechia Draw · 51 shares &nbsp;|&nbsp; AK: Korea/Czechia Over 2.5 · 100 shares</span><br>
+        <button id="inject-bets-btn" style="margin-top:8px;background:#993C1D;color:#fff;border:none;border-radius:6px;padding:5px 14px;cursor:pointer;font-size:12px;font-weight:600;">Inject these 4 bets →</button>
+      </div>`;
+    }
     MATCHES.forEach(m => {
       const saved = scores[m.id];
       const hasScore = saved && saved.homeScore !== undefined;
@@ -732,6 +741,8 @@ function renderMain(app) {
   }
 
   document.getElementById("place-btn")?.addEventListener("click", placeBet);
+
+  document.getElementById("inject-bets-btn")?.addEventListener("click", forceInjectBets);
 
   app.querySelectorAll(".settle-btn:not(.delete-btn)").forEach(btn => {
     btn.addEventListener("click", () => settleBet(btn.dataset.id, btn.dataset.result));
@@ -886,6 +897,80 @@ async function settleMatchByScore(matchId, homeScore, awayScore) {
   await setDoc(doc(db, "scores", matchId), { homeScore: hs, awayScore: as, settledAt: serverTimestamp() });
 
   toast(`${match.home} ${hs}–${as} ${match.away} · ${settledCount} bet${settledCount!==1?"s":""} settled`, "success");
+}
+
+// ── Commissioner: force-inject bets that were placed before the app was ready ──
+// Writes directly to Firebase without touching balances (balances already reflect these bets)
+async function forceInjectBets() {
+  const toInject = [
+    {
+      player: "Brez",
+      matchId: null, // resolved by name below
+      matchLabel: "Korea Republic vs Czechia",
+      ctLabel: "Thu Jun 11 · 9:00 PM CT",
+      betType: "Total Goals",
+      optionKey: "over",
+      optionLabel: "O 2.5",
+      odds: -115,
+      wager: 1000,
+      toWin: 870,
+    },
+    {
+      player: "AK",
+      matchId: null,
+      matchLabel: "Mexico vs South Africa",
+      ctLabel: "Thu Jun 11 · 2:00 PM CT",
+      betType: "Moneyline",
+      optionKey: "home_win",
+      optionLabel: "Mexico",
+      odds: -235,
+      wager: 235,
+      toWin: 100,
+    },
+    {
+      player: "AK",
+      matchId: null,
+      matchLabel: "Korea Republic vs Czechia",
+      ctLabel: "Thu Jun 11 · 9:00 PM CT",
+      betType: "Moneyline",
+      optionKey: "draw",
+      optionLabel: "Draw",
+      odds: 205,
+      wager: 51,
+      toWin: 105,
+    },
+    {
+      player: "AK",
+      matchId: null,
+      matchLabel: "Korea Republic vs Czechia",
+      ctLabel: "Thu Jun 11 · 9:00 PM CT",
+      betType: "Total Goals",
+      optionKey: "over",
+      optionLabel: "O 2.5",
+      odds: -115,
+      wager: 100,
+      toWin: 87,
+    },
+  ];
+
+  // Find match IDs from loaded MATCHES
+  function findMatchId(label) {
+    const m = MATCHES.find(m => m.home + " vs " + m.away === label
+      || m.away + " vs " + m.home === label);
+    return m ? m.id : label; // fallback to label if not found
+  }
+
+  let count = 0;
+  for (const bet of toInject) {
+    bet.matchId = findMatchId(bet.matchLabel);
+    await addDoc(collection(db, "bets"), {
+      ...bet,
+      status: "pending",
+      createdAt: serverTimestamp(),
+    });
+    count++;
+  }
+  toast(`✓ Injected ${count} bets into Firebase`, "success");
 }
 
 function renderBetCard(bet, canSettle) {
