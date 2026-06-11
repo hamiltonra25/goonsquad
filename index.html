@@ -206,7 +206,7 @@ function formatCT(ts) {
 }
 
 // ── State ──
-let db, currentPlayer = null, balances = {}, bets = [], betType = "Moneyline", scores = {}, oddsLastUpdated = null;
+let db, currentPlayer = null, balances = {}, bets = [], betType = "Moneyline", scores = {}, oddsLastUpdated = null, oddsLoaded = false;
 let selected = null, wagerVal = "", wagerError = "", activeTab = "wager", now = Date.now();
 let unsubBets = null, unsubBalances = null;
 let configMode = false;
