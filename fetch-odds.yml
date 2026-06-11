@@ -1,0 +1,33 @@
+name: Fetch World Cup Odds
+
+on:
+  schedule:
+    # 8AM, 12PM, 4PM, 8PM Central Time (CDT = UTC-5)
+    - cron: '0 13 * * *'   # 8AM CT
+    - cron: '0 17 * * *'   # 12PM CT
+    - cron: '0 21 * * *'   # 4PM CT
+    - cron: '0 1 * * *'    # 8PM CT
+  workflow_dispatch:        # allow manual trigger from GitHub UI
+
+jobs:
+  fetch-odds:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install firebase-admin node-fetch
+
+      - name: Fetch odds and write to Firebase
+        env:
+          ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          FIREBASE_CLIENT_EMAIL: ${{ secrets.FIREBASE_CLIENT_EMAIL }}
+          FIREBASE_PRIVATE_KEY: ${{ secrets.FIREBASE_PRIVATE_KEY }}
+        run: node fetch-odds.js
