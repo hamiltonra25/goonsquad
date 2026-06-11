@@ -622,7 +622,7 @@ function renderMain(app) {
   // ── COMMISSIONER ──
   if (activeTab === "commissioner") {
     // Check if force-inject bets have already been added
-    const injectedAlready = bets.some(b => b.player === "Brez" && b.matchLabel === "Korea Republic vs Czechia" && b.wager === 1000);
+    const injectedAlready = bets.some(b => b.player === "Brez" && b.wager === 1000 && b.betType === "Total Goals");
     html += `<div style="font-size:12px;color:#993C1D;font-weight:600;margin-bottom:8px;">Commissioner Mode · Enter final scores to auto-settle all bets</div>`;
     if (!injectedAlready) {
       html += `<div style="background:#FFF8E6;border:1px solid #F0D080;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;">
@@ -953,24 +953,45 @@ async function forceInjectBets() {
     },
   ];
 
-  // Find match IDs from loaded MATCHES
+  // Find match IDs from loaded MATCHES — try name match, fall back to label
   function findMatchId(label) {
-    const m = MATCHES.find(m => m.home + " vs " + m.away === label
-      || m.away + " vs " + m.home === label);
-    return m ? m.id : label; // fallback to label if not found
+    // Try exact match first
+    let m = MATCHES.find(m => (m.home + " vs " + m.away) === label);
+    if (m) return m.id;
+    // Try partial match on both team names
+    const parts = label.split(" vs ");
+    if (parts.length === 2) {
+      m = MATCHES.find(m =>
+        (m.home.includes(parts[0]) || parts[0].includes(m.home)) &&
+        (m.away.includes(parts[1]) || parts[1].includes(m.away))
+      );
+    }
+    if (m) return m.id;
+    // Last resort — just use the label as the ID
+    console.log("Could not find match ID for:", label, "MATCHES:", MATCHES.map(m=>m.home+"v"+m.away));
+    return label;
   }
 
   let count = 0;
   for (const bet of toInject) {
-    bet.matchId = findMatchId(bet.matchLabel);
+    const resolvedId = findMatchId(bet.matchLabel);
     await addDoc(collection(db, "bets"), {
-      ...bet,
+      player: bet.player,
+      matchId: resolvedId,
+      matchLabel: bet.matchLabel,
+      ctLabel: bet.ctLabel,
+      betType: bet.betType,
+      optionKey: bet.optionKey,
+      optionLabel: bet.optionLabel,
+      odds: bet.odds,
+      wager: bet.wager,
+      toWin: bet.toWin,
       status: "pending",
       createdAt: serverTimestamp(),
     });
     count++;
   }
-  toast(`✓ Injected ${count} bets into Firebase`, "success");
+  toast("✓ " + count + " bets injected successfully", "success");
 }
 
 function renderBetCard(bet, canSettle) {
