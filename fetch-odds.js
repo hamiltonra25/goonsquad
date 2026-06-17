@@ -171,13 +171,35 @@ async function fetchOdds() {
       }
 
       if (market.key === 'spreads') {
-        const homeOut = market.outcomes.find(o => normalizeName(o.name) === home);
-        const awayOut = market.outcomes.find(o => normalizeName(o.name) === away);
+        // Try exact name match first
+        let homeOut = market.outcomes.find(o => normalizeName(o.name) === home);
+        let awayOut = market.outcomes.find(o => normalizeName(o.name) === away);
+
+        // Partial name match fallback
+        if (!homeOut || !awayOut) {
+          homeOut = market.outcomes.find(o =>
+            home.toLowerCase().includes(normalizeName(o.name).toLowerCase()) ||
+            normalizeName(o.name).toLowerCase().includes(home.toLowerCase().split(' ')[0])
+          );
+          awayOut = market.outcomes.find(o => o !== homeOut && (
+            away.toLowerCase().includes(normalizeName(o.name).toLowerCase()) ||
+            normalizeName(o.name).toLowerCase().includes(away.toLowerCase().split(' ')[0])
+          ));
+        }
+
+        // Positional fallback — Odds API always returns home first
+        if ((!homeOut || !awayOut) && market.outcomes.length >= 2) {
+          homeOut = market.outcomes[0];
+          awayOut = market.outcomes[1];
+          console.log('Spread: using positional fallback for', home, 'vs', away,
+            '— got', homeOut.name, 'vs', awayOut.name);
+        }
+
         if (homeOut && awayOut) {
           spread = {
-            line:     homeOut.point,  // negative = home favored
-            homeFav:  homeOut.price,
-            awayDog:  awayOut.price,
+            line:    homeOut.point,
+            homeFav: homeOut.price,
+            awayDog: awayOut.price,
           };
         }
       }

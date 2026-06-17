@@ -24,11 +24,17 @@
   #topbar .logout-btn:hover { background: #eee; }
 
   /* ── Stats row ── */
-  .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; margin-bottom: 14px; }
-  .stat-card { background: #ebebeb; border-radius: 8px; padding: 8px 10px; }
+  .stats-row { display: flex; flex-direction: column; gap: 7px; margin-bottom: 14px; }
+  .stats-row-inner { display: flex; gap: 7px; }
+  .stat-card { background: #ebebeb; border-radius: 8px; padding: 9px 12px; flex: 1; min-width: 0; }
+  .stat-card-wide { background: #ebebeb; border-radius: 8px; padding: 9px 12px; flex: 1; min-width: 0; }
   .stat-label { font-size: 9px; color: #888; margin-bottom: 2px; text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600; }
-  .stat-value { font-size: 15px; font-weight: 700; }
+  .stat-value { font-size: 16px; font-weight: 700; }
   .stat-sub { font-size: 10px; color: #aaa; margin-top: 1px; }
+  .stat-cols { display: flex; gap: 16px; }
+  .stat-col { text-align: left; }
+  .stat-col-label { font-size: 10px; font-weight: 600; margin-bottom: 2px; }
+  .stat-col-value { font-size: 15px; font-weight: 700; }
 
   /* ── Tabs ── */
   .tabs { display: flex; border-bottom: 1px solid #ddd; margin-bottom: 14px; }
@@ -500,59 +506,66 @@ function renderMain(app) {
   const drawGames  = playerBets.filter(b=>b.status==="push").length;
   const pendGames  = playerBets.filter(b=>b.status==="pending").length;
 
-  html += `<div class="stats-row" style="grid-template-columns:1fr 1fr 1fr 1fr 1fr;">
-    <div class="stat-card">
-      <div class="stat-label">Balance</div>
-      <div class="stat-value">${bal.toLocaleString()}</div>
-    </div>
-    <div class="stat-card">
-      <div style="display:flex;gap:14px;">
-        <span>
-          <div style="font-size:10px;color:#3B6D11;font-weight:600;">Won</div>
-          <div style="font-size:15px;font-weight:700;color:#3B6D11;">${wonGames}</div>
-        </span>
-        <span>
-          <div style="font-size:10px;color:#A32D2D;font-weight:600;">Lost</div>
-          <div style="font-size:15px;font-weight:700;color:#A32D2D;">${lostGames}</div>
-        </span>
-        <span>
-          <div style="font-size:10px;color:#C86A00;font-weight:600;">Draw</div>
-          <div style="font-size:15px;font-weight:700;color:#C86A00;">${drawGames}</div>
-        </span>
+  html += `<div class="stats-row">
+    <div class="stats-row-inner">
+      <div class="stat-card">
+        <div class="stat-label">Balance</div>
+        <div class="stat-value">${bal.toLocaleString()}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Rank</div>
+        <div class="stat-value" style="font-size:14px;">${rankLabel}</div>
+        ${rankSub ? '<div class="stat-sub">' + rankSub + '</div>' : ""}
+      </div>
+      <div class="stat-card" style="background:#E8F0FE;">
+        <div class="stat-label" style="color:#185FA5;">Pending</div>
+        <div style="display:flex;gap:14px;align-items:flex-end;">
+          <span>
+            <div style="font-size:10px;color:#185FA5;font-weight:600;">Bets</div>
+            <div style="font-size:15px;font-weight:700;color:#185FA5;">${pendGames}</div>
+          </span>
+          <span>
+            <div style="font-size:10px;color:#185FA5;font-weight:600;">Shares</div>
+            <div style="font-size:13px;font-weight:700;color:#185FA5;">${pendShares.toLocaleString()}</div>
+          </span>
+        </div>
       </div>
     </div>
-    <div class="stat-card">
-      <div style="display:flex;gap:14px;">
-        <span>
-          <div style="font-size:10px;color:#3B6D11;font-weight:600;">Won</div>
-          <div style="font-size:13px;font-weight:700;color:#3B6D11;">+${wonShares.toLocaleString()}</div>
-        </span>
-        <span>
-          <div style="font-size:10px;color:#A32D2D;font-weight:600;">Lost</div>
-          <div style="font-size:13px;font-weight:700;color:#A32D2D;">-${lostShares.toLocaleString()}</div>
-        </span>
-        <span>
-          <div style="font-size:10px;color:#C86A00;font-weight:600;">Draw</div>
-          <div style="font-size:13px;font-weight:700;color:#C86A00;">${drawShares.toLocaleString()}</div>
-        </span>
+    <div class="stats-row-inner">
+      <div class="stat-card-wide">
+        <div class="stat-label" style="margin-bottom:6px;">Record (Bets)</div>
+        <div style="display:flex;gap:18px;">
+          <span class="stat-col">
+            <div class="stat-col-label" style="color:#3B6D11;">Won</div>
+            <div class="stat-col-value" style="color:#3B6D11;">${wonGames}</div>
+          </span>
+          <span class="stat-col">
+            <div class="stat-col-label" style="color:#A32D2D;">Lost</div>
+            <div class="stat-col-value" style="color:#A32D2D;">${lostGames}</div>
+          </span>
+          <span class="stat-col">
+            <div class="stat-col-label" style="color:#C86A00;">Draw</div>
+            <div class="stat-col-value" style="color:#C86A00;">${drawGames}</div>
+          </span>
+        </div>
       </div>
-    </div>
-    <div class="stat-card">
-      <div style="display:flex;gap:14px;">
-        <span>
-          <div style="font-size:10px;color:#185FA5;font-weight:600;">Pending</div>
-          <div style="font-size:15px;font-weight:700;color:#185FA5;">${pendGames}</div>
-        </span>
-        <span>
-          <div style="font-size:10px;color:#185FA5;font-weight:600;">Shares</div>
-          <div style="font-size:13px;font-weight:700;color:#185FA5;">${pendShares.toLocaleString()}</div>
-        </span>
+      <div class="stat-card-wide">
+        <div class="stat-label" style="margin-bottom:6px;">Record (Shares)</div>
+        <div style="display:flex;gap:18px;">
+          <span class="stat-col">
+            <div class="stat-col-label" style="color:#3B6D11;">Won</div>
+            <div class="stat-col-value" style="font-size:13px;color:#3B6D11;">+${wonShares.toLocaleString()}</div>
+          </span>
+          <span class="stat-col">
+            <div class="stat-col-label" style="color:#A32D2D;">Lost</div>
+            <div class="stat-col-value" style="font-size:13px;color:#A32D2D;">-${lostShares.toLocaleString()}</div>
+          </span>
+          <span class="stat-col">
+            <div class="stat-col-label" style="color:#C86A00;">Draw</div>
+            <div class="stat-col-value" style="font-size:13px;color:#C86A00;">${drawShares.toLocaleString()}</div>
+          </span>
+        </div>
       </div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-label">Rank</div>
-      <div class="stat-value" style="font-size:13px;">${rankLabel}</div>
-      ${rankSub ? '<div class="stat-sub">' + rankSub + '</div>' : ""}
     </div>
   </div>`;
 
@@ -583,7 +596,7 @@ function renderMain(app) {
     html += `</div>`;
 
     let lastDateLabel = null;
-    MATCHES.forEach(m => {
+    MATCHES.filter(m => !isLocked(m, now)).forEach(m => {
       const locked = isLocked(m, now);
       const opts   = getOdds(m, betType);
       const cd     = countdown(m, now);
@@ -681,6 +694,7 @@ function renderMain(app) {
   if (activeTab === "all") {
     let anyShown = false;
     MATCHES.forEach(m => {
+      const matchLocked = isLocked(m, now);
       const matchBets = bets.filter(b => b.matchId === m.id);
       if (matchBets.length === 0) return;
       const locked = isLocked(m, now);
@@ -720,7 +734,21 @@ function renderMain(app) {
         <div class="comm-match-title">${m.home} vs ${m.away}</div>
         <div class="comm-match-meta">${m.ctLabel} · ${m.group} · ${pendingCount} pending bet${pendingCount!==1?"s":""}</div>`;
       if (hasScore) {
-        html += `<div class="comm-settled-score">${m.home} ${saved.homeScore}–${saved.awayScore} ${m.away} &nbsp;<span style="font-size:11px;font-weight:400;color:#3B6D11;">✓ Settled</span></div>`;
+        html += `<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+          <div class="comm-settled-score">${m.home} ${saved.homeScore}–${saved.awayScore} ${m.away} &nbsp;<span style="font-size:11px;font-weight:400;color:#3B6D11;">✓ Settled</span></div>
+          <button class="edit-score-btn" data-match="${m.id}" style="font-size:11px;padding:3px 10px;background:#fff;border:1px solid #ccc;border-radius:6px;cursor:pointer;color:#666;">Edit Score</button>
+        </div>
+        <div id="edit-form-${m.id}" style="display:none;margin-top:8px;">
+          <div class="comm-score-row">
+            <label>${m.home}</label>
+            <input class="comm-score-input" type="number" min="0" max="20" id="ehs-${m.id}" value="${saved.homeScore}" />
+            <span class="comm-dash">–</span>
+            <input class="comm-score-input" type="number" min="0" max="20" id="eas-${m.id}" value="${saved.awayScore}" />
+            <label>${m.away}</label>
+            <button class="comm-submit" data-match="${m.id}" id="re-settle-${m.id}">Re-settle</button>
+          </div>
+          <div style="font-size:11px;color:#A32D2D;margin-top:6px;">⚠ This will reverse all existing payouts for this match and re-settle with the new score.</div>
+        </div>`;
       } else {
         html += `<div class="comm-score-row">
           <label>${m.home}</label>
@@ -866,6 +894,28 @@ function renderMain(app) {
   document.getElementById("place-btn")?.addEventListener("click", placeBet);
 
   document.getElementById("inject-bets-btn")?.addEventListener("click", forceInjectBets);
+
+  // Edit score toggle
+  app.querySelectorAll(".edit-score-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const formId = "edit-form-" + btn.dataset.match;
+      const form = document.getElementById(formId);
+      if (form) form.style.display = form.style.display === "none" ? "block" : "none";
+    });
+  });
+
+  // Re-settle with corrected score
+  MATCHES.forEach(m => {
+    const btn = document.getElementById("re-settle-" + m.id);
+    if (!btn) return;
+    btn.addEventListener("click", () => {
+      const hs = document.getElementById("ehs-" + m.id)?.value;
+      const as2 = document.getElementById("eas-" + m.id)?.value;
+      if (confirm("Reverse all payouts for " + m.home + " vs " + m.away + " and re-settle with " + m.home + " " + hs + "–" + as2 + " " + m.away + "?")) {
+        reverseAndResettle(m.id, hs, as2);
+      }
+    });
+  });
 
   app.querySelectorAll(".settle-btn:not(.delete-btn)").forEach(btn => {
     btn.addEventListener("click", () => settleBet(btn.dataset.id, btn.dataset.result));
@@ -1020,6 +1070,35 @@ async function settleMatchByScore(matchId, homeScore, awayScore) {
   await setDoc(doc(db, "scores", matchId), { homeScore: hs, awayScore: as, settledAt: serverTimestamp() });
 
   toast(`${match.home} ${hs}–${as} ${match.away} · ${settledCount} bet${settledCount!==1?"s":""} settled`, "success");
+}
+
+// ── Reverse all settled bets for a match and re-settle with new score ──
+async function reverseAndResettle(matchId, newHomeScore, newAwayScore) {
+  const match = MATCHES.find(m => m.id === matchId);
+  if (!match) return;
+  const hs = parseInt(newHomeScore, 10);
+  const as2 = parseInt(newAwayScore, 10);
+  if (isNaN(hs) || isNaN(as2)) { toast("Enter valid scores.", "error"); return; }
+
+  const matchBets = bets.filter(b => b.matchId === matchId && b.status !== "pending");
+
+  // Step 1: Reverse existing payouts
+  for (const bet of matchBets) {
+    const bal = balances[bet.player] ?? INITIAL_SHARES;
+    if (bet.status === "won") {
+      await setDoc(doc(db, "balances", bet.player), { amount: bal - bet.wager - bet.toWin });
+    } else if (bet.status === "push") {
+      await setDoc(doc(db, "balances", bet.player), { amount: bal - bet.wager });
+    }
+    // lost bets: nothing was paid out so nothing to reverse
+    await updateDoc(doc(db, "bets", bet.id), { status: "pending" });
+  }
+
+  // Small delay to let Firebase propagate balance changes
+  await new Promise(r => setTimeout(r, 500));
+
+  // Step 2: Re-settle with new score
+  await settleMatchByScore(matchId, hs, as2);
 }
 
 // ── Commissioner: force-inject bets that were placed before the app was ready ──
