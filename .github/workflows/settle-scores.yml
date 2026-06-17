@@ -1,0 +1,30 @@
+name: Auto-Settle Scores
+
+on:
+  schedule:
+    # Run every hour at :30 past (offset from odds fetch which runs at :00)
+    - cron: '30 * * * *'
+  workflow_dispatch: # allow manual trigger
+
+jobs:
+  settle:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install firebase-admin node-fetch
+
+      - name: Fetch scores and settle bets
+        env:
+          API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          FIREBASE_CLIENT_EMAIL: ${{ secrets.FIREBASE_CLIENT_EMAIL }}
+          FIREBASE_PRIVATE_KEY: ${{ secrets.FIREBASE_PRIVATE_KEY }}
+        run: node settle-scores.js
