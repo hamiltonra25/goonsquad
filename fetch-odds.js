@@ -57,16 +57,55 @@ function toCTLabel(isoString) {
 }
 
 async function fetchOdds() {
-  const url = `https://api.the-odds-api.com/v4/sports/${SPORT}/odds` +
+  // Fetch h2h/dc from DraftKings specifically, and spreads/totals from any sharp book
+  const urlMain = `https://api.the-odds-api.com/v4/sports/${SPORT}/odds` +
     `?apiKey=${ODDS_API_KEY}` +
     `&regions=${REGION}` +
-    `&markets=${MARKETS}` +
+    `&markets=h2h` +
     `&bookmakers=${BOOKMAKER}` +
     `&oddsFormat=${ODDS_FORMAT}`;
 
-  console.log('Fetching odds from The Odds API...');
-  const res  = await fetch(url);
+  // Spreads/totals: DraftKings often doesn't list these for soccer — use Pinnacle as best sharp line
+  const urlSpreads = `https://api.the-odds-api.com/v4/sports/${SPORT}/odds` +
+    `?apiKey=${ODDS_API_KEY}` +
+    `&regions=us,eu` +
+    `&markets=spreads,totals` +
+    `&bookmakers=pinnacle,draftkings,fanduel,betmgm` +
+    `&oddsFormat=${ODDS_FORMAT}`;
+
+  console.log('Fetching moneyline odds from DraftKings...');
+  const res  = await fetch(urlMain);
   const data = await res.json();
+  console.log(`Remaining credits after h2h: ${res.headers.get('x-requests-remaining')}`);
+
+  console.log('Fetching spreads/totals from sharp books...');
+  const res2   = await fetch(urlSpreads);
+  const data2  = await res2.json();
+  console.log(`Remaining credits after spreads: ${res2.headers.get('x-requests-remaining')}`);
+
+  // Build a lookup for spreads/totals by event ID
+  const spreadTotalMap = {};
+  if (Array.isArray(data2)) {
+    for (const event of data2) {
+      // Pick the first bookmaker that has spreads and/or totals
+      let sp = null, tot = null;
+      for (const bk of event.bookmakers) {
+        for (const mkt of bk.markets) {
+          if (!sp && mkt.key === 'spreads' && mkt.outcomes.length >= 2) {
+            const o0 = mkt.outcomes[0], o1 = mkt.outcomes[1];
+            sp = { line: o0.point, homeFav: o0.price, awayDog: o1.price };
+          }
+          if (!tot && mkt.key === 'totals') {
+            const over  = mkt.outcomes.find(o => o.name === 'Over');
+            const under = mkt.outcomes.find(o => o.name === 'Under');
+            if (over && under) tot = { line: over.point, over: over.price, under: under.price };
+          }
+        }
+        if (sp && tot) break;
+      }
+      spreadTotalMap[event.id] = { spread: sp, total: tot };
+    }
+  }
 
   console.log(`Remaining credits: ${res.headers.get('x-requests-remaining')}`);
   console.log(`Credits used this call: ${res.headers.get('x-requests-last')}`);
@@ -93,6 +132,9 @@ async function fetchOdds() {
 
     // Parse each market
     let moneyline = null, tnb = null, total = null, spread = null, dc = null;
+
+    // Use spreadTotalMap for spreads/totals (DraftKings often doesn't list these for soccer)
+    const stData = spreadTotalMap[event.id] || {};
 
     for (const market of dk.markets) {
       if (market.key === 'h2h') {
@@ -207,7 +249,11 @@ async function fetchOdds() {
 
     if (!moneyline) continue; // skip if no odds at all
 
-    // Fallback defaults if market not available
+    // Use sharp book spread/total if DraftKings didn't provide it
+    if (!spread && stData.spread) spread = stData.spread;
+    if (!total  && stData.total)  total  = stData.total;
+
+    // Final fallback defaults
     if (!total)  total  = { line: 2.5, over: -110, under: -110 };
     if (!spread) spread = { line: -0.5, homeFav: -110, awayDog: -110 };
     if (!dc)     dc     = { homeOrDraw: -200, awayOrDraw: -200, homeOrAway: -200 };
