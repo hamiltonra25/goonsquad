@@ -96,7 +96,8 @@ function resolveBet(bet, homeScore, awayScore, match) {
 
 async function run() {
   // 1. Fetch all finished World Cup fixtures from API-Football
-  const url = `https://v3.football.api-sports.io/fixtures?league=${WC_LEAGUE_ID}&season=${WC_SEASON}&status=FT`;
+  // FT = Full Time, AET = After Extra Time, PEN = After Penalties
+  const url = `https://v3.football.api-sports.io/fixtures?league=${WC_LEAGUE_ID}&season=${WC_SEASON}&status=FT-AET-PEN`;
   const res  = await fetch(url, {
     headers: { 'x-apisports-key': API_FOOTBALL_KEY },
   });
@@ -108,6 +109,23 @@ async function run() {
   }
 
   console.log(`Got ${data.response.length} finished fixtures from API-Football`);
+  if (data.response.length === 0) {
+    // Debug: try fetching without status filter to see what's there
+    const debugUrl = `https://v3.football.api-sports.io/fixtures?league=${WC_LEAGUE_ID}&season=${WC_SEASON}`;
+    const debugRes = await fetch(debugUrl, { headers: { 'x-apisports-key': API_FOOTBALL_KEY } });
+    const debugData = await debugRes.json();
+    console.log(`Debug: total fixtures in tournament: ${debugData.response?.length ?? 0}`);
+    if (debugData.response?.length > 0) {
+      // Show status codes of first 10 fixtures
+      const sample = debugData.response.slice(0, 10).map(f =>
+        `${f.teams.home.name} vs ${f.teams.away.name} — status: ${f.fixture.status.short} (${f.fixture.status.long})`
+      );
+      console.log('Sample fixture statuses:\n' + sample.join('\n'));
+    } else {
+      console.log('Debug response:', JSON.stringify(debugData).slice(0, 500));
+    }
+    process.exit(0);
+  }
 
   // 2. Load all Firebase matches and bets
   const [matchSnap, betSnap, balanceSnap, scoresSnap] = await Promise.all([
