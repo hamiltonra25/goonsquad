@@ -658,13 +658,12 @@ function renderMain(app) {
         const otherBetCount = matchPending.filter(b => b.player !== currentPlayer).length;
         html += `<div class="match-pending-bets"><span class="pending-bet-tag" style="background:#F1EFE8;color:#888;">${otherBetCount} bet${otherBetCount>1?"s":""} sealed until kickoff</span></div>`;
       }
-    });
 
-    if (MATCHES.length > 0 && selected && selectedMatch && selectedOpt && !isLocked(selectedMatch,now)) {
-      html += `
-        <div class="wager-slip">
+      // ── Inline wager slip — renders directly below the selected match ──
+      if (isSel && selectedOpt && !locked) {
+        html += `<div class="wager-slip" style="margin:-2px 0 6px 0;border-radius:0 0 9px 9px;border-top:none;">
           <div class="slip-desc">
-            <strong>${currentPlayer}</strong> · ${selectedMatch.home} vs ${selectedMatch.away} · ${betType} → <span class="pick">${selectedOpt.label} ${fmt(selectedOpt.odds)}</span>
+            <strong>${currentPlayer}</strong> · ${m.home} vs ${m.away} · ${betType} → <span class="pick">${selectedOpt.label} ${fmt(selectedOpt.odds)}</span>
           </div>
           <div class="slip-inputs">
             <input type="number" id="wager-input" value="${wagerVal}" placeholder="Shares to wager" min="10" max="${bal}" />
@@ -675,10 +674,13 @@ function renderMain(app) {
             <span>To win: <strong class="green">${toWinAmt.toLocaleString()}</strong></span>
             <span>Return: <strong>${(wAmt+toWinAmt).toLocaleString()}</strong></span>
           </div>` : ""}
-          ${wagerError ? `<div id="slip-error" class="slip-error">${wagerError}</div>` : "<div id=\"slip-error\" class=\"slip-error\"></div>"}
+          ${wagerError ? `<div id="slip-error" class="slip-error">${wagerError}</div>` : `<div id="slip-error" class="slip-error"></div>`}
           <button class="place-btn" id="place-btn">Place bet</button>
         </div>`;
-    }
+      }
+    });
+
+
   }
 
   // ── MY BETS ──
