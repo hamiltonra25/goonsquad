@@ -208,7 +208,16 @@ function getOdds(m, bt) {
   if(bt==="Moneyline") return [{key:"home_win",label:m.home,odds:m.moneyline.home},{key:"draw",label:"Draw",odds:m.moneyline.draw},{key:"away_win",label:m.away,odds:m.moneyline.away}];
   if(bt==="Tie No Bet") return [{key:"tnb_home",label:m.home,odds:m.tnb.home},{key:"tnb_away",label:m.away,odds:m.tnb.away}];
   if(bt==="Total Goals") return [{key:"over",label:`O ${m.total.line}`,odds:m.total.over},{key:"under",label:`U ${m.total.line}`,odds:m.total.under}];
-  if(bt==="Spread") return [{key:"spread_home",label:`${m.home} ${m.spread.line>=0?"+":""}${m.spread.line}`,odds:m.spread.homeFav},{key:"spread_away",label:`${m.away} ${m.spread.line>=0?"-":"+"}${Math.abs(m.spread.line)}`,odds:m.spread.awayDog}];
+  if(bt==="Spread") {
+    const hl = m.spread.line;                          // home team line (e.g. -1.5 means home favored)
+    const al = m.spread.awayLine !== undefined ? m.spread.awayLine : -hl; // away line is opposite
+    const hlStr = hl > 0 ? "+" + hl : "" + hl;
+    const alStr = al > 0 ? "+" + al : "" + al;
+    return [
+      {key:"spread_home", label:`${m.home} ${hlStr}`, odds:m.spread.homeFav},
+      {key:"spread_away", label:`${m.away} ${alStr}`, odds:m.spread.awayDog},
+    ];
+  }
   if(bt==="Double Chance") return [{key:"dc_1x",label:`${m.home}/Draw`,odds:m.dc.homeOrDraw},{key:"dc_x2",label:`${m.away}/Draw`,odds:m.dc.awayOrDraw},{key:"dc_12",label:`${m.home}/${m.away}`,odds:m.dc.homeOrAway}];
   return [];
 }
