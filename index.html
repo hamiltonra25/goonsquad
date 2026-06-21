@@ -704,7 +704,8 @@ function renderMain(app) {
   // ── ALL BETS — grouped by match, chronological, hide pre-kickoff bets from other players ──
   if (activeTab === "all") {
     let anyShown = false;
-    MATCHES.forEach(m => {
+    // Newest to oldest — reverse the sorted MATCHES array
+    [...MATCHES].reverse().forEach(m => {
       const matchLocked = isLocked(m, now);
       const matchBets = bets.filter(b => b.matchId === m.id);
       if (matchBets.length === 0) return;
