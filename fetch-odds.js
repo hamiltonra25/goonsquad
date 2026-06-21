@@ -239,9 +239,10 @@ async function fetchOdds() {
 
         if (homeOut && awayOut) {
           spread = {
-            line:    homeOut.point,
-            homeFav: homeOut.price,
-            awayDog: awayOut.price,
+            line:     homeOut.point,   // home team's line
+            awayLine: awayOut.point,   // away team's actual line from API
+            homeFav:  homeOut.price,
+            awayDog:  awayOut.price,
           };
         }
       }
