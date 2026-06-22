@@ -761,7 +761,11 @@ function renderMain(app) {
   if (activeTab === "commissioner") {
     // Check if force-inject bets have already been added
     const injectedAlready = bets.some(b => b.player === "Brez" && b.wager === 1000 && b.betType === "Total Goals");
-    html += `<div style="font-size:12px;color:#993C1D;font-weight:600;margin-bottom:8px;">Commissioner Mode · Enter final scores to auto-settle all bets</div>`;
+    html += `<div style="font-size:12px;color:#993C1D;font-weight:600;margin-bottom:8px;">Commissioner Mode · Enter final scores to auto-settle all bets</div>
+      <div style="margin-bottom:14px;display:flex;align-items:center;gap:12px;">
+        <button id="refresh-odds-btn" style="background:#185FA5;color:#fff;border:none;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:600;cursor:pointer;">🔄 Refresh Odds Now</button>
+        <span id="refresh-odds-status" style="font-size:12px;color:#888;"></span>
+      </div>`;
     if (!injectedAlready) {
       html += `<div style="background:#FFF8E6;border:1px solid #F0D080;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;">
         <strong>4 bets need to be manually entered</strong> (placed before app was set up)<br>
