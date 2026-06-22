@@ -1,7 +1,6 @@
 // fetch-odds.js
-// Runs via GitHub Actions 4x per day (8AM, 12PM, 4PM, 8PM CT)
-// Fetches World Cup 2026 odds from OddsPapi (DraftKings) — 1 request per run
-// and writes them to Firebase Firestore.
+// Fetches World Cup 2026 odds from OddsPapi — 1 request per run
+// Tournament ID 16 = FIFA World Cup 2026
  
 import fetch from 'node-fetch';
 import { initializeApp, cert } from 'firebase-admin/app';
@@ -18,15 +17,13 @@ const db = getFirestore();
  
 const API_KEY          = process.env.ODDSPAPI_KEY;
 const BASE             = 'https://api.oddspapi.io/v4';
-const WC_TOURNAMENT_ID = 16;       // World Cup 2026
+const WC_TOURNAMENT_ID = 16;
 const BOOKMAKER        = 'draftkings';
-const ODDS_FORMAT      = 'american';
  
-// Market IDs in OddsPapi for soccer:
-// 101 = 1X2 (moneyline with draw)
-// 18  = Asian Handicap (spread)
-// 8   = Total Goals (over/under)
-// We'll discover these from the response and parse by outcome name
+// OddsPapi market IDs for soccer:
+// 101 = 1X2 (moneyline) — outcomes: 101=home, 102=draw, 103=away
+// 8   = Total Goals      — outcomes: 104=over, 105=under (or similar)
+// 18  = Asian Handicap   — outcomes vary
  
 const TEAM_MAP = {
   'South Korea':            'Korea Republic',
@@ -63,138 +60,130 @@ function toAmerican(prob) {
   return prob >= 0.5 ? Math.round(-prob/(1-prob)*100) : Math.round((1-prob)/prob*100);
 }
  
+// Get American price from an outcome object
+function getPrice(outcome) {
+  const player = Object.values(outcome?.players || {})[0];
+  if (!player) return null;
+  // Use priceAmerican if available, otherwise convert from decimal
+  if (player.priceAmerican != null) return parseInt(player.priceAmerican, 10);
+  if (player.price != null) {
+    // Convert decimal to American
+    const dec = player.price;
+    return dec >= 2 ? Math.round((dec-1)*100) : Math.round(-100/(dec-1));
+  }
+  return null;
+}
+ 
+// Get handicap line from outcome player
+function getLine(outcome) {
+  const player = Object.values(outcome?.players || {})[0];
+  return player?.handicap ?? player?.line ?? player?.spread ?? null;
+}
+ 
 async function run() {
-  // ONE request to get all World Cup fixtures + DraftKings odds
-  const url = `${BASE}/odds-by-tournaments?tournamentIds=${WC_TOURNAMENT_ID}&bookmaker=${BOOKMAKER}&oddsFormat=${ODDS_FORMAT}&apiKey=${API_KEY}`;
+  const url = `${BASE}/odds-by-tournaments?tournamentIds=${WC_TOURNAMENT_ID}&bookmaker=${BOOKMAKER}&apiKey=${API_KEY}`;
   console.log('Fetching World Cup odds from OddsPapi (1 request)...');
  
-  const res  = await fetch(url);
+  const res = await fetch(url);
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`OddsPapi error ${res.status}: ${text.slice(0,300)}`);
   }
  
-  const data = await res.json();
+  const data     = await res.json();
   const fixtures = Array.isArray(data) ? data : (data.data || []);
   console.log(`Got ${fixtures.length} fixtures`);
  
-  // Debug: dump first fixture with odds to see exact structure
-  const withOdds = fixtures.find(f => f.bookmakerOdds?.[BOOKMAKER]?.markets);
-  if (withOdds) {
-    console.log('\n=== SAMPLE FIXTURE STRUCTURE ===');
-    console.log(JSON.stringify(withOdds, null, 2).slice(0, 3000));
-    console.log('=== END SAMPLE ===\n');
-  } else {
-    console.log('No fixtures with DraftKings markets found!');
-    console.log('First fixture raw:', JSON.stringify(fixtures[0], null, 2).slice(0, 1000));
-  }
- 
-  let written = 0;
+  let written = 0, skipped = 0;
   const batch = db.batch();
  
   for (const fixture of fixtures) {
+    // Only process upcoming matches (statusId 0 = not started)
+    if (fixture.statusId !== 0) continue;
+ 
     const home = norm(fixture.participant1Name);
     const away = norm(fixture.participant2Name);
     if (!home || !away) continue;
  
     const kickoffUTC = new Date(fixture.startTime).getTime();
     const ctLabel    = toCTLabel(fixture.startTime);
+    const markets    = fixture.bookmakerOdds?.[BOOKMAKER]?.markets;
  
-    const dkOdds = fixture.bookmakerOdds?.[BOOKMAKER];
-    if (!dkOdds || !dkOdds.markets) {
-      console.log(`No DK odds for: ${home} vs ${away}`);
-      continue;
-    }
+    if (!markets) { skipped++; continue; }
  
-    const markets = dkOdds.markets;
-    let moneyline = null, total = null, spread = null;
- 
-    // Parse each market by looking at outcome names
-    for (const [marketId, market] of Object.entries(markets)) {
-      const outcomes = market.outcomes || {};
- 
-      // ── 1X2 Moneyline ──
-      // outcomes keyed by outcomeId, each has bookmakerOutcomeId: "home"/"draw"/"away"
-      const homeOut = Object.values(outcomes).find(o =>
-        Object.values(o.players||{}).some(p => p.bookmakerOutcomeId === 'home' || p.bookmakerOutcomeId === '1')
-      );
-      const drawOut = Object.values(outcomes).find(o =>
-        Object.values(o.players||{}).some(p => p.bookmakerOutcomeId === 'draw' || p.bookmakerOutcomeId === 'x')
-      );
-      const awayOut = Object.values(outcomes).find(o =>
-        Object.values(o.players||{}).some(p => p.bookmakerOutcomeId === 'away' || p.bookmakerOutcomeId === '2')
-      );
- 
-      if (homeOut && awayOut && !moneyline) {
-        const homePrice = Object.values(homeOut.players||{})[0]?.price;
-        const drawPrice = drawOut ? Object.values(drawOut.players||{})[0]?.price : null;
-        const awayPrice = Object.values(awayOut.players||{})[0]?.price;
-        if (homePrice && awayPrice) {
-          moneyline = { home: homePrice, away: awayPrice, draw: drawPrice };
-          console.log(`  ML: ${home} ${homePrice} / Draw ${drawPrice} / ${away} ${awayPrice}`);
-        }
-      }
- 
-      // ── Total Goals ──
-      const overOut  = Object.values(outcomes).find(o =>
-        Object.values(o.players||{}).some(p =>
-          p.bookmakerOutcomeId?.toLowerCase().includes('over') ||
-          p.bookmakerOutcomeId === 'o'
-        )
-      );
-      const underOut = Object.values(outcomes).find(o =>
-        Object.values(o.players||{}).some(p =>
-          p.bookmakerOutcomeId?.toLowerCase().includes('under') ||
-          p.bookmakerOutcomeId === 'u'
-        )
-      );
-      if (overOut && underOut && !total) {
-        const overPlayer  = Object.values(overOut.players||{})[0];
-        const underPlayer = Object.values(underOut.players||{})[0];
-        if (overPlayer?.price && underPlayer?.price) {
-          // Try to get the line from the player data
-          const line = overPlayer.line ?? overPlayer.handicap ?? 2.5;
-          total = { line, over: overPlayer.price, under: underPlayer.price };
-          console.log(`  Total: O${line} ${overPlayer.price} / U${line} ${underPlayer.price}`);
-        }
-      }
- 
-      // ── Asian Handicap / Spread ──
-      // Each team's outcome is identified by their name or home/away position
-      const spreadOutcomes = Object.values(outcomes);
-      if (spreadOutcomes.length === 2 && !spread) {
-        const p1 = Object.values(spreadOutcomes[0].players||{})[0];
-        const p2 = Object.values(spreadOutcomes[1].players||{})[0];
-        // Check if these have handicap/line values and match our teams
-        const out1Name = spreadOutcomes[0].players?.['0']?.playerName ||
-                         spreadOutcomes[0].players?.['0']?.bookmakerOutcomeId || '';
-        const out2Name = spreadOutcomes[1].players?.['0']?.playerName ||
-                         spreadOutcomes[1].players?.['0']?.bookmakerOutcomeId || '';
- 
-        if (p1?.price && p2?.price && (p1?.handicap != null || p1?.line != null)) {
-          const line1 = p1.handicap ?? p1.line ?? 0;
-          const line2 = p2.handicap ?? p2.line ?? -line1;
- 
-          // Assign to home/away by matching team name in the outcome
-          const out1IsHome = out1Name.toLowerCase().includes(home.toLowerCase().split(' ')[0]) ||
-                             out1Name === 'home' || out1Name === '1';
- 
-          if (out1IsHome) {
-            spread = { line: line1, awayLine: line2, homeFav: p1.price, awayDog: p2.price };
-          } else {
-            spread = { line: line2, awayLine: line1, homeFav: p2.price, awayDog: p1.price };
-          }
-          console.log(`  Spread: ${home} ${spread.line} (${spread.homeFav}) / ${away} ${spread.awayLine} (${spread.awayDog})`);
-        }
+    // ── Market 101: 1X2 Moneyline ──
+    // Outcome keys: 101=home, 102=draw, 103=away (consistent across all soccer fixtures)
+    let moneyline = null;
+    const m101 = markets['101'];
+    if (m101?.outcomes) {
+      const homePrice = getPrice(m101.outcomes['101']);
+      const drawPrice = getPrice(m101.outcomes['102']);
+      const awayPrice = getPrice(m101.outcomes['103']);
+      if (homePrice && awayPrice) {
+        moneyline = { home: homePrice, away: awayPrice, draw: drawPrice };
+        console.log(`${home} vs ${away}: ML ${homePrice}/${drawPrice}/${awayPrice}`);
       }
     }
  
     if (!moneyline) {
-      console.log(`Skipping ${home} vs ${away} — no moneyline`);
-      continue;
+      // Try any market that has 3 outcomes (home/draw/away pattern)
+      for (const [mId, market] of Object.entries(markets)) {
+        const outs = Object.values(market.outcomes || {});
+        if (outs.length === 3) {
+          const prices = outs.map(o => getPrice(o)).filter(Boolean);
+          if (prices.length === 3) {
+            moneyline = { home: prices[0], draw: prices[1], away: prices[2] };
+            console.log(`${home} vs ${away}: ML from market ${mId}: ${prices.join('/')}`);
+            break;
+          }
+        }
+      }
     }
  
-    // ── Derive TNB from moneyline ──
+    if (!moneyline) { console.log(`No moneyline for: ${home} vs ${away}`); skipped++; continue; }
+ 
+    // ── Total Goals ──
+    let total = null;
+    for (const [mId, market] of Object.entries(markets)) {
+      const outs = Object.values(market.outcomes || {});
+      if (outs.length === 2) {
+        const prices = outs.map(o => getPrice(o));
+        const lines  = outs.map(o => getLine(o));
+        if (prices[0] && prices[1] && lines[0] != null) {
+          // This looks like a totals market
+          const line = Math.abs(lines[0]);
+          total = { line, over: prices[0], under: prices[1] };
+          console.log(`  Total: O${line} ${prices[0]} / U${line} ${prices[1]}`);
+          break;
+        }
+      }
+    }
+ 
+    // ── Asian Handicap / Spread ──
+    let spread = null;
+    for (const [mId, market] of Object.entries(markets)) {
+      const outs = Object.entries(market.outcomes || {});
+      if (outs.length === 2) {
+        const [[k1, o1], [k2, o2]] = outs;
+        const line1 = getLine(o1);
+        const line2 = getLine(o2);
+        const p1    = getPrice(o1);
+        const p2    = getPrice(o2);
+        if (line1 != null && line2 != null && p1 && p2 && line1 !== line2) {
+          // Assign home/away by which line is negative (favored team gets negative handicap)
+          spread = {
+            line:     line1,
+            awayLine: line2,
+            homeFav:  p1,
+            awayDog:  p2,
+          };
+          console.log(`  Spread: ${home} ${line1} (${p1}) / ${away} ${line2} (${p2})`);
+          break;
+        }
+      }
+    }
+ 
+    // ── Derive TNB ──
     let tnb;
     if (moneyline.draw) {
       const iH = toImplied(moneyline.home);
@@ -205,7 +194,7 @@ async function run() {
       tnb = { home: moneyline.home, away: moneyline.away };
     }
  
-    // ── Derive Double Chance from moneyline ──
+    // ── Derive Double Chance ──
     let dc;
     if (moneyline.draw) {
       const iH = toImplied(moneyline.home);
@@ -220,17 +209,14 @@ async function run() {
       dc = { homeOrDraw: -300, awayOrDraw: -300, homeOrAway: -200 };
     }
  
-    // Fallbacks
     if (!total)  total  = { line: 2.5, over: -110, under: -110 };
     if (!spread) spread = { line: -0.5, awayLine: 0.5, homeFav: -110, awayDog: -110 };
  
     const matchDoc = {
-      id:         fixture.fixtureId,
-      home, away,
-      kickoffUTC,
-      ctLabel,
+      id: fixture.fixtureId,
+      home, away, kickoffUTC, ctLabel,
       moneyline, tnb, total, spread, dc,
-      updatedAt:  new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
  
     const ref = db.collection('matches').doc(fixture.fixtureId);
@@ -246,8 +232,7 @@ async function run() {
   });
  
   await batch.commit();
-  console.log(`\n✓ Wrote ${written} matches to Firebase`);
-  console.log('Requests used this run: 1');
+  console.log(`\n✓ Wrote ${written} matches to Firebase (${skipped} skipped)`);
 }
  
 run().catch(err => {
