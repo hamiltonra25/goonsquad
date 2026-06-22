@@ -113,14 +113,19 @@ async function run() {
   for (const fixture of fixtures) {
     const home = norm(fixture.participant1Name);
     const away = norm(fixture.participant2Name);
-    if (!home || !away) continue;
+    if (!home || !away) { console.log('Skipping - no names:', fixture.participant1Name, fixture.participant2Name); continue; }
  
     const kickoffUTC = new Date(fixture.startTime).getTime();
     const ctLabel    = toCTLabel(fixture.startTime);
-    const markets    = fixture.bookmakerOdds?.[BOOKMAKER]?.markets;
  
-    if (!markets) {
-      console.log(`No markets for: ${home} vs ${away} (hasOdds:${fixture.hasOdds} status:${fixture.statusName})`);
+    // Direct access — we confirmed the structure is bookmakerOdds.draftkings.markets
+    const dkData  = fixture.bookmakerOdds && fixture.bookmakerOdds[BOOKMAKER];
+    const markets = dkData && dkData.markets;
+ 
+    console.log(`Processing: ${home} vs ${away} | dk=${!!dkData} markets=${!!markets} keys=${markets ? Object.keys(markets).join(',') : 'none'}`);
+ 
+    if (!markets || Object.keys(markets).length === 0) {
+      console.log(`  -> No markets, skipping`);
       skipped++; continue;
     }
  
