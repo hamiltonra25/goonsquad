@@ -75,6 +75,11 @@ const PARTICIPANT_MAP = {
   35317: 'Mexico',       // backup
   55827: 'Curaçao',
   85295: 'Curaçao',      // backup
+  // Norway
+  4475: 'Norway',
+  6044: 'Norway',
+  // Turkey
+  4700: 'Turkey',
   // Iran variations
   294080: 'Iran',
   // Iraq backup
@@ -180,6 +185,11 @@ async function run() {
       skipped++; continue;
     }
  
+    // Log all available market IDs for first fixture only
+    if (written === 0 && skipped === 0) {
+      console.log(`Available market IDs: ${Object.keys(markets).join(', ')}`);
+    }
+ 
     // ── Market 101: 1X2 Moneyline (outcomes 101=home, 102=draw, 103=away) ──
     let moneyline = null;
     const m101 = markets['101'];
@@ -255,7 +265,9 @@ async function run() {
     }
  
     if (!total)  total  = { line: 2.5, over: -110, under: -110 };
-    if (!spread) spread = { line: -0.5, awayLine: 0.5, homeFav: -110, awayDog: -110 };
+    if (!spread) { spread = { line: -0.5, awayLine: 0.5, homeFav: -110, awayDog: -110 }; console.log(`  Spread: using default (not available from DK)`); }
+    console.log(`  DC: 1X=${dc.homeOrDraw} X2=${dc.awayOrDraw} 12=${dc.homeOrAway} (derived)`);
+    console.log(`  TNB: ${home} ${tnb.home} / ${away} ${tnb.away} (derived)`);
  
     const matchDoc = {
       id: fixture.fixtureId,
