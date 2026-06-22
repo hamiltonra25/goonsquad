@@ -2,12 +2,14 @@ name: Fetch World Cup Odds
 
 on:
   schedule:
-    # 8AM, 12PM, 4PM, 8PM Central Time (CDT = UTC-5)
-    - cron: '0 13 * * *'   # 8AM CT
-    - cron: '0 17 * * *'   # 12PM CT
-    - cron: '0 21 * * *'   # 4PM CT
-    - cron: '0 1 * * *'    # 8PM CT
-  workflow_dispatch:        # allow manual trigger from GitHub UI
+    # 6x per day aligned to World Cup kickoff windows (CT = UTC-5)
+    - cron: '0 13 * * *'   #  8:00 AM CT — before morning games
+    - cron: '0 16 * * *'   # 11:00 AM CT — before noon games
+    - cron: '30 18 * * *'  #  1:30 PM CT — before 2PM/3PM games
+    - cron: '30 21 * * *'  #  4:30 PM CT — before 5PM/6:30PM games
+    - cron: '30 0 * * *'   #  7:30 PM CT — before 8PM/9PM games
+    - cron: '30 3 * * *'   # 10:30 PM CT — before 10PM/11PM games
+  workflow_dispatch:
 
 jobs:
   fetch-odds:
