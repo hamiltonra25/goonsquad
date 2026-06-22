@@ -916,6 +916,44 @@ function renderMain(app) {
 
   document.getElementById("inject-bets-btn")?.addEventListener("click", forceInjectBets);
 
+  // Refresh Odds button — triggers GitHub Actions workflow dispatch
+  document.getElementById("refresh-odds-btn")?.addEventListener("click", async () => {
+    const btn    = document.getElementById("refresh-odds-btn");
+    const status = document.getElementById("refresh-odds-status");
+    btn.disabled = true;
+    btn.textContent = "Triggering...";
+    status.textContent = "";
+    try {
+      // Fetch the GitHub token from Firebase meta collection
+      const tokenDoc = await getDoc(doc(db, "meta", "github"));
+      const ghToken  = tokenDoc?.data()?.workflowToken;
+      if (!ghToken) { status.textContent = "⚠ No token configured in Firebase."; btn.disabled = false; btn.textContent = "🔄 Refresh Odds Now"; return; }
+
+      const res = await fetch("https://api.github.com/repos/hamiltonra25/goonsquad/actions/workflows/fetch-odds.yml/dispatches", {
+        method: "POST",
+        headers: {
+          "Authorization": "Bearer " + ghToken,
+          "Accept": "application/vnd.github+json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ ref: "main" }),
+      });
+
+      if (res.status === 204) {
+        status.textContent = "✓ Odds refresh triggered — usually takes 30-60 seconds.";
+        status.style.color = "#3B6D11";
+      } else {
+        status.textContent = "✗ Error " + res.status + " — check GitHub Actions.";
+        status.style.color = "#A32D2D";
+      }
+    } catch (err) {
+      status.textContent = "✗ Failed: " + err.message;
+      status.style.color = "#A32D2D";
+    }
+    btn.disabled = false;
+    btn.textContent = "🔄 Refresh Odds Now";
+  });
+
   // Edit score toggle
   app.querySelectorAll(".edit-score-btn").forEach(btn => {
     btn.addEventListener("click", () => {
@@ -1226,10 +1264,12 @@ function renderBetCard(bet, canSettle) {
       ${bet.status==="pending" && canSettle ? `
         <div class="settle-row">
           <span class="settle-label">Settle:</span>
-          <button class="settle-btn settle-won"  data-id="${bet.id}" data-result="won">Won</button>
-          <button class="settle-btn settle-lost" data-id="${bet.id}" data-result="lost">Lost</button>
-          <button class="settle-btn settle-push" data-id="${bet.id}" data-result="push">Push</button>
-          ${currentPlayer === "R3" && !isLocked(MATCHES.find(m=>m.id===bet.matchId)||{kickoffUTC:0}, Date.now()) ? `<button class="settle-btn settle-delete delete-btn" data-id="${bet.id}">Delete & refund</button>` : ""}
+          ${currentPlayer === "R3" ? `
+            <button class="settle-btn settle-won"  data-id="${bet.id}" data-result="won">Won</button>
+            <button class="settle-btn settle-lost" data-id="${bet.id}" data-result="lost">Lost</button>
+            <button class="settle-btn settle-push" data-id="${bet.id}" data-result="push">Push</button>
+            <button class="settle-btn settle-delete delete-btn" data-id="${bet.id}">Delete & refund</button>
+          ` : ""}
         </div>` : ""}
     </div>`;
 }
