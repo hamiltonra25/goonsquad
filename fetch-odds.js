@@ -93,14 +93,16 @@ async function run() {
   const data     = await res.json();
   const fixtures = Array.isArray(data) ? data : (data.data || []);
   console.log(`Got ${fixtures.length} fixtures`);
+  const statusCounts = {};
+  fixtures.forEach(f => { statusCounts[f.statusId] = (statusCounts[f.statusId]||0)+1; });
+  console.log('Status breakdown:', JSON.stringify(statusCounts));
+  const hasOddsCount = fixtures.filter(f => f.hasOdds).length;
+  console.log(`hasOdds=true: ${hasOddsCount}`);
  
   let written = 0, skipped = 0;
   const batch = db.batch();
  
   for (const fixture of fixtures) {
-    // Only process upcoming matches (statusId 0 = not started)
-    if (fixture.statusId !== 0) continue;
- 
     const home = norm(fixture.participant1Name);
     const away = norm(fixture.participant2Name);
     if (!home || !away) continue;
@@ -109,38 +111,39 @@ async function run() {
     const ctLabel    = toCTLabel(fixture.startTime);
     const markets    = fixture.bookmakerOdds?.[BOOKMAKER]?.markets;
  
-    if (!markets) { skipped++; continue; }
- 
-    // ── Market 101: 1X2 Moneyline ──
-    // Outcome keys: 101=home, 102=draw, 103=away (consistent across all soccer fixtures)
-    let moneyline = null;
-    const m101 = markets['101'];
-    if (m101?.outcomes) {
-      const homePrice = getPrice(m101.outcomes['101']);
-      const drawPrice = getPrice(m101.outcomes['102']);
-      const awayPrice = getPrice(m101.outcomes['103']);
-      if (homePrice && awayPrice) {
-        moneyline = { home: homePrice, away: awayPrice, draw: drawPrice };
-        console.log(`${home} vs ${away}: ML ${homePrice}/${drawPrice}/${awayPrice}`);
-      }
+    if (!markets) {
+      console.log(`No markets for: ${home} vs ${away} (hasOdds:${fixture.hasOdds} status:${fixture.statusName})`);
+      skipped++; continue;
     }
  
-    if (!moneyline) {
-      // Try any market that has 3 outcomes (home/draw/away pattern)
-      for (const [mId, market] of Object.entries(markets)) {
-        const outs = Object.values(market.outcomes || {});
-        if (outs.length === 3) {
-          const prices = outs.map(o => getPrice(o)).filter(Boolean);
-          if (prices.length === 3) {
-            moneyline = { home: prices[0], draw: prices[1], away: prices[2] };
-            console.log(`${home} vs ${away}: ML from market ${mId}: ${prices.join('/')}`);
-            break;
-          }
+    // Log market IDs available
+    const marketIds = Object.keys(markets);
+    console.log(`${home} vs ${away}: markets=[${marketIds.join(',')}] hasOdds=${fixture.hasOdds}`);
+ 
+    // ── Find 1X2 Moneyline: look for market with exactly 3 outcomes ──
+    let moneyline = null;
+    for (const [mId, market] of Object.entries(markets)) {
+      const outcomeEntries = Object.entries(market.outcomes || {});
+      if (outcomeEntries.length === 3) {
+        const prices = outcomeEntries.map(([,o]) => getPrice(o));
+        console.log(`  Market ${mId} (3 outcomes): prices=${JSON.stringify(prices)}`);
+        if (prices[0] && prices[2]) {
+          moneyline = { home: prices[0], draw: prices[1], away: prices[2] };
+          console.log(`  -> ML: ${home} ${prices[0]} / Draw ${prices[1]} / ${away} ${prices[2]}`);
+          break;
         }
       }
     }
  
-    if (!moneyline) { console.log(`No moneyline for: ${home} vs ${away}`); skipped++; continue; }
+    if (!moneyline) {
+      // Last resort: dump all market outcome counts
+      for (const [mId, market] of Object.entries(markets)) {
+        const outs = Object.entries(market.outcomes || {});
+        console.log(`  Market ${mId}: ${outs.length} outcomes, prices=${JSON.stringify(outs.map(([,o])=>getPrice(o)))}`);
+      }
+      console.log(`No moneyline for: ${home} vs ${away}`);
+      skipped++; continue;
+    }
  
     // ── Total Goals ──
     let total = null;
