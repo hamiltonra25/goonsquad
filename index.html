@@ -46,6 +46,15 @@
   .bt-pill { background: none; border: 1px solid #ddd; border-radius: 8px; padding: 4px 10px; font-size: 12px; cursor: pointer; color: #666; }
   .bt-pill.active { background: #fff; border-color: #999; color: #1a1a1a; font-weight: 500; }
 
+  /* ── Odds status table ── */
+  .odds-status-bar { background: var(--color-background-secondary); border-radius: 8px; padding: 8px 12px; margin-bottom: 14px; }
+  .odds-status-title { font-size: 10px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+  .odds-status-grid { display: flex; gap: 4px; flex-wrap: wrap; }
+  .odds-slot { display: flex; align-items: center; gap: 4px; font-size: 11px; padding: 3px 8px; border-radius: 20px; white-space: nowrap; }
+  .odds-slot.hit { background: #EAF3DE; color: #3B6D11; }
+  .odds-slot.pending { background: #FFF8E6; color: #BA7517; }
+  .odds-slot.missed { background: #FCEBEB; color: #A32D2D; }
+
   /* ── Date dividers ── */
   .date-divider { font-size: 11px; font-weight: 600; color: #bbb; text-transform: uppercase; letter-spacing: 0.06em; padding: 10px 2px 4px; margin-top: 4px; border-top: 1px solid #ebebeb; }
   .date-divider:first-child { border-top: none; margin-top: 0; padding-top: 2px; }
@@ -193,7 +202,7 @@ const PLAYER_INITIALS = ["R3", "UN", "AK", "BR"];
 // MATCHES is populated from Firebase (written by GitHub Actions fetch-odds.js)
 let MATCHES = [];
 
-const BET_TYPES = ["Moneyline","Tie No Bet","Total Goals","Spread","Double Chance"];
+const BET_TYPES = ["Moneyline","Tie No Bet","Total Goals","Double Chance"];
 
 function fmt(o) { return o > 0 ? `+${o}` : `${o}`; }
 function calcPayout(w, o) { return o > 0 ? Math.round(w*(o/100)) : Math.round(w*(100/Math.abs(o))); }
@@ -208,16 +217,7 @@ function getOdds(m, bt) {
   if(bt==="Moneyline") return [{key:"home_win",label:m.home,odds:m.moneyline.home},{key:"draw",label:"Draw",odds:m.moneyline.draw},{key:"away_win",label:m.away,odds:m.moneyline.away}];
   if(bt==="Tie No Bet") return [{key:"tnb_home",label:m.home,odds:m.tnb.home},{key:"tnb_away",label:m.away,odds:m.tnb.away}];
   if(bt==="Total Goals") return [{key:"over",label:`O ${m.total.line}`,odds:m.total.over},{key:"under",label:`U ${m.total.line}`,odds:m.total.under}];
-  if(bt==="Spread") {
-    const hl = m.spread.line;                          // home team line (e.g. -1.5 means home favored)
-    const al = m.spread.awayLine !== undefined ? m.spread.awayLine : -hl; // away line is opposite
-    const hlStr = hl > 0 ? "+" + hl : "" + hl;
-    const alStr = al > 0 ? "+" + al : "" + al;
-    return [
-      {key:"spread_home", label:`${m.home} ${hlStr}`, odds:m.spread.homeFav},
-      {key:"spread_away", label:`${m.away} ${alStr}`, odds:m.spread.awayDog},
-    ];
-  }
+
   if(bt==="Double Chance") return [{key:"dc_1x",label:`${m.home}/Draw`,odds:m.dc.homeOrDraw},{key:"dc_x2",label:`${m.away}/Draw`,odds:m.dc.awayOrDraw},{key:"dc_12",label:`${m.home}/${m.away}`,odds:m.dc.homeOrAway}];
   return [];
 }
@@ -588,15 +588,46 @@ function renderMain(app) {
 
   // ── ODDS & BETS ──
   if (activeTab === "wager") {
+    // ── Odds status table ──
+    const SCHEDULED_CT = [
+      { label: '8:00 AM',   utcH: 13, utcM: 0  },
+      { label: '11:00 AM',  utcH: 16, utcM: 0  },
+      { label: '1:30 PM',   utcH: 18, utcM: 30 },
+      { label: '4:30 PM',   utcH: 21, utcM: 30 },
+      { label: '7:30 PM',   utcH: 0,  utcM: 30 },
+      { label: '10:30 PM',  utcH: 3,  utcM: 30 },
+    ];
+    const lastUpd = oddsLastUpdated ? new Date(oddsLastUpdated).getTime() : null;
+    const todayUTC = new Date(now);
+
+    function getSlotTime(s) {
+      const d = new Date(todayUTC);
+      d.setUTCHours(s.utcH, s.utcM, 0, 0);
+      // 7:30PM and 10:30PM CT are past midnight UTC, add a day if we've passed them
+      if (s.utcH < 6 && todayUTC.getUTCHours() > 12) d.setUTCDate(d.getUTCDate() + 1);
+      return d.getTime();
+    }
+
+    html += '<div class="odds-status-bar">';
+    html += '<div class="odds-status-title">Odds Updates — Pinnacle</div>';
+    html += '<div class="odds-status-grid">';
+    SCHEDULED_CT.forEach(slot => {
+      const slotMs = getSlotTime(slot);
+      const isPast = now >= slotMs;
+      // Hit if lastUpdated is within 90 min of this slot
+      const isHit  = lastUpd && Math.abs(lastUpd - slotMs) < 90 * 60 * 1000;
+      let cls, icon, lbl;
+      if (!isPast)      { cls = 'pending'; icon = '🟡'; lbl = 'Upcoming'; }
+      else if (isHit)   { cls = 'hit';     icon = '✓';  lbl = 'Pinnacle'; }
+      else              { cls = 'missed';  icon = '✗';  lbl = 'Missed';   }
+      html += '<span class="odds-slot ' + cls + '">' + icon + ' ' + slot.label + ' — ' + lbl + '</span>';
+    });
+    html += '</div></div>';
+
     if (MATCHES.length === 0) {
       html += `<div style="text-align:center;color:#aaa;padding:3rem 0;font-size:14px;">
         Loading odds… check back in a moment.
       </div>`;
-    } else {
-      const ageStr = oddsLastUpdated
-        ? "Odds updated " + new Date(oddsLastUpdated).toLocaleTimeString("en-US",{timeZone:"America/Chicago",hour:"numeric",minute:"2-digit",hour12:true}) + " CT"
-        : "Odds loaded";
-      html += `<div style="font-size:10px;color:#aaa;text-align:right;margin-bottom:8px;">${ageStr}</div>`;
     }
     html += `<div class="bet-type-row">`;
     BET_TYPES.forEach(bt => {
@@ -950,12 +981,7 @@ function renderMain(app) {
           if (optionKey === "over")  return totalGoals > line ? "won" : "lost";
           if (optionKey === "under") return totalGoals < line ? "won" : "lost";
         }
-        if (betType === "Spread") {
-          const line = m.spread.line, covered = diff - line;
-          if (covered === 0) return "push";
-          if (optionKey === "spread_home") return covered > 0 ? "won" : "lost";
-          if (optionKey === "spread_away") return covered < 0 ? "won" : "lost";
-        }
+
         if (betType === "Double Chance") {
           if (optionKey === "dc_1x") return diff >= 0 ? "won" : "lost";
           if (optionKey === "dc_x2") return diff <= 0 ? "won" : "lost";
@@ -1031,13 +1057,7 @@ async function settleMatchByScore(matchId, homeScore, awayScore) {
       if (optionKey === "over")  return totalGoals > line ? "won" : "lost";
       if (optionKey === "under") return totalGoals < line ? "won" : "lost";
     }
-    if (betType === "Spread") {
-      const line = match.spread.line; // negative means home favored by that much
-      const covered = goalDiff - line; // home covers if this > 0
-      if (covered === 0) return "push";
-      if (optionKey === "spread_home") return covered > 0 ? "won" : "lost";
-      if (optionKey === "spread_away") return covered < 0 ? "won" : "lost";
-    }
+
     if (betType === "Double Chance") {
       if (optionKey === "dc_1x") return (goalDiff >= 0) ? "won" : "lost"; // home or draw
       if (optionKey === "dc_x2") return (goalDiff <= 0) ? "won" : "lost"; // away or draw
