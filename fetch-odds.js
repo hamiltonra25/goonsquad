@@ -92,7 +92,10 @@ async function run() {
     throw new Error(`OddsPapi error ${res.status}: ${text.slice(0,300)}`);
   }
  
-  const data     = await res.json();
+  const data = await res.json();
+  console.log('Raw response type:', typeof data, Array.isArray(data) ? 'array' : 'not-array');
+  console.log('Raw response keys:', typeof data === 'object' ? Object.keys(data).join(', ') : 'N/A');
+  console.log('Raw response slice:', JSON.stringify(data).slice(0, 500));
   const fixtures = Array.isArray(data) ? data : (data.data || []);
   console.log(`Got ${fixtures.length} fixtures`);
   const statusCounts = {};
@@ -101,10 +104,12 @@ async function run() {
   const hasOddsCount = fixtures.filter(f => f.hasOdds).length;
   console.log(`hasOdds=true: ${hasOddsCount}`);
  
-  // Debug: show raw bookmakerOdds for first fixture
+  // Debug: show full structure of first fixture (excluding bookmakerOdds)
   const first = fixtures[0];
   if (first) {
-    console.log('First fixture bookmakerOdds:', JSON.stringify(first.bookmakerOdds, null, 2).slice(0, 2000));
+    const { bookmakerOdds, ...meta } = first;
+    console.log('First fixture keys:', Object.keys(first).join(', '));
+    console.log('First fixture meta:', JSON.stringify(meta, null, 2));
   }
  
   let written = 0, skipped = 0;
