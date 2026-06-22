@@ -1,13 +1,12 @@
 // fetch-odds.js
 // Runs via GitHub Actions 4x per day (8AM, 12PM, 4PM, 8PM CT)
-// Fetches World Cup 2026 odds from BALLDONTLIE API (DraftKings + FanDuel)
+// Fetches World Cup 2026 odds from OddsPapi (DraftKings) — 1 request per run
 // and writes them to Firebase Firestore.
 
 import fetch from 'node-fetch';
 import { initializeApp, cert } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 
-// ── Firebase Admin init ──
 initializeApp({
   credential: cert({
     projectId:   process.env.FIREBASE_PROJECT_ID,
@@ -17,51 +16,36 @@ initializeApp({
 });
 const db = getFirestore();
 
-const BDL_KEY = process.env.BDL_KEY;
-const BASE    = 'https://api.balldontlie.io/fifa/worldcup/v1';
+const API_KEY          = process.env.ODDSPAPI_KEY;
+const BASE             = 'https://api.oddspapi.io/v4';
+const WC_TOURNAMENT_ID = 16;       // World Cup 2026
+const BOOKMAKER        = 'draftkings';
+const ODDS_FORMAT      = 'american';
 
-// Team name normalization — BALLDONTLIE names → our display names
+// Market IDs in OddsPapi for soccer:
+// 101 = 1X2 (moneyline with draw)
+// 18  = Asian Handicap (spread)
+// 8   = Total Goals (over/under)
+// We'll discover these from the response and parse by outcome name
+
 const TEAM_MAP = {
-  'South Korea':              'Korea Republic',
-  'Korea Republic':           'Korea Republic',
-  'Czech Republic':           'Czechia',
-  'Czechia':                  'Czechia',
-  'Bosnia and Herzegovina':   'Bosnia & Herz.',
-  'Bosnia-Herzegovina':       'Bosnia & Herz.',
-  'Bosnia & Herzegovina':     'Bosnia & Herz.',
-  'Türkiye':                  'Turkey',
-  'Turkey':                   'Turkey',
-  "Côte d'Ivoire":            'Ivory Coast',
-  'Ivory Coast':              'Ivory Coast',
-  'DR Congo':                 'DR Congo',
-  'Congo DR':                 'DR Congo',
-  'United States':            'USA',
-  'USA':                      'USA',
-  'Cabo Verde':               'Cape Verde',
-  'Cape Verde Islands':       'Cape Verde',
-  'Cape Verde':               'Cape Verde',
-  'Curaçao':                  'Curaçao',
-  'Curacao':                  'Curaçao',
+  'South Korea':            'Korea Republic',
+  'Czech Republic':         'Czechia',
+  'Bosnia and Herzegovina': 'Bosnia & Herz.',
+  'Bosnia-Herzegovina':     'Bosnia & Herz.',
+  'Türkiye':                'Turkey',
+  "Côte d'Ivoire":          'Ivory Coast',
+  'DR Congo':               'DR Congo',
+  'Congo DR':               'DR Congo',
+  'United States':          'USA',
+  'Cabo Verde':             'Cape Verde',
+  'Cape Verde Islands':     'Cape Verde',
+  'Curaçao':                'Curaçao',
+  'Curacao':                'Curaçao',
 };
 
-function norm(name) {
-  return TEAM_MAP[name] || name;
-}
+function norm(name) { return TEAM_MAP[name] || name; }
 
-function toImplied(price) {
-  return price > 0
-    ? 100 / (price + 100)
-    : Math.abs(price) / (Math.abs(price) + 100);
-}
-
-function toAmerican(prob) {
-  prob = Math.min(Math.max(prob, 0.01), 0.99);
-  return prob >= 0.5
-    ? Math.round(-prob / (1 - prob) * 100)
-    : Math.round((1 - prob) / prob * 100);
-}
-
-// Convert UTC ISO string to CT display label
 function toCTLabel(isoString) {
   const d = new Date(isoString);
   return d.toLocaleString('en-US', {
@@ -71,159 +55,188 @@ function toCTLabel(isoString) {
   }).replace(',', ' ·') + ' CT';
 }
 
-async function fetchAllPages(url) {
-  const results = [];
-  let cursor = null;
-  do {
-    const pageUrl = cursor ? `${url}&cursor=${cursor}` : url;
-    const res  = await fetch(pageUrl, { headers: { Authorization: BDL_KEY } });
-    if (!res.ok) {
-      const text = await res.text();
-      throw new Error(`BDL API error ${res.status}: ${text}`);
-    }
-    const data = await res.json();
-    results.push(...(data.data || []));
-    cursor = data.meta?.next_cursor || null;
-  } while (cursor);
-  return results;
+function toImplied(price) {
+  return price > 0 ? 100/(price+100) : Math.abs(price)/(Math.abs(price)+100);
+}
+function toAmerican(prob) {
+  prob = Math.min(Math.max(prob, 0.01), 0.99);
+  return prob >= 0.5 ? Math.round(-prob/(1-prob)*100) : Math.round((1-prob)/prob*100);
 }
 
 async function run() {
-  // ── 1. Fetch all upcoming/current WC matches ──
-  console.log('Fetching World Cup matches from BALLDONTLIE...');
-  const matches = await fetchAllPages(`${BASE}/matches?per_page=100`);
-  console.log(`Got ${matches.length} matches`);
+  // ONE request to get all World Cup fixtures + DraftKings odds
+  const url = `${BASE}/odds-by-tournaments?tournamentIds=${WC_TOURNAMENT_ID}&bookmaker=${BOOKMAKER}&oddsFormat=${ODDS_FORMAT}&apiKey=${API_KEY}`;
+  console.log('Fetching World Cup odds from OddsPapi (1 request)...');
 
-  // ── 2. Fetch odds — prefer DraftKings, fallback to fanduel ──
-  console.log('Fetching DraftKings odds...');
-  const dkOdds = await fetchAllPages(`${BASE}/odds?vendor=draftkings&per_page=100`);
-  console.log(`Got ${dkOdds.length} DraftKings odds rows`);
+  const res  = await fetch(url);
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`OddsPapi error ${res.status}: ${text.slice(0,300)}`);
+  }
 
-  console.log('Fetching FanDuel odds (fallback)...');
-  const fdOdds = await fetchAllPages(`${BASE}/odds?vendor=fanduel&per_page=100`);
-  console.log(`Got ${fdOdds.length} FanDuel odds rows`);
-
-  // Build odds lookup: match_id -> odds row (DK preferred)
-  const oddsMap = {};
-  fdOdds.forEach(o => { oddsMap[o.match_id] = o; });
-  dkOdds.forEach(o => { oddsMap[o.match_id] = o; }); // DK overwrites FD
+  const data = await res.json();
+  const fixtures = Array.isArray(data) ? data : (data.data || []);
+  console.log(`Got ${fixtures.length} fixtures`);
 
   let written = 0;
   const batch = db.batch();
 
-  for (const match of matches) {
-    const homeRaw = match.home_team?.name || match.home_team;
-    const awayRaw = match.away_team?.name || match.away_team;
-    if (!homeRaw || !awayRaw) continue;
+  for (const fixture of fixtures) {
+    const home = norm(fixture.participant1Name);
+    const away = norm(fixture.participant2Name);
+    if (!home || !away) continue;
 
-    const home = norm(homeRaw);
-    const away = norm(awayRaw);
-    const kickoffUTC = new Date(match.datetime || match.date).getTime();
-    const ctLabel    = toCTLabel(match.datetime || match.date);
+    const kickoffUTC = new Date(fixture.startTime).getTime();
+    const ctLabel    = toCTLabel(fixture.startTime);
 
-    const odds = oddsMap[match.id];
-
-    // ── Moneyline ──
-    let moneyline = null;
-    if (odds?.moneyline_home_odds && odds?.moneyline_away_odds) {
-      moneyline = {
-        home: odds.moneyline_home_odds,
-        away: odds.moneyline_away_odds,
-        draw: odds.moneyline_draw_odds || null,
-      };
-    }
-
-    if (!moneyline) {
-      console.log(`No moneyline for: ${home} vs ${away} — skipping`);
+    const dkOdds = fixture.bookmakerOdds?.[BOOKMAKER];
+    if (!dkOdds || !dkOdds.markets) {
+      console.log(`No DK odds for: ${home} vs ${away}`);
       continue;
     }
 
-    // ── Tie No Bet (derived from moneyline by stripping draw probability) ──
+    const markets = dkOdds.markets;
+    let moneyline = null, total = null, spread = null;
+
+    // Parse each market by looking at outcome names
+    for (const [marketId, market] of Object.entries(markets)) {
+      const outcomes = market.outcomes || {};
+
+      // ── 1X2 Moneyline ──
+      // outcomes keyed by outcomeId, each has bookmakerOutcomeId: "home"/"draw"/"away"
+      const homeOut = Object.values(outcomes).find(o =>
+        Object.values(o.players||{}).some(p => p.bookmakerOutcomeId === 'home' || p.bookmakerOutcomeId === '1')
+      );
+      const drawOut = Object.values(outcomes).find(o =>
+        Object.values(o.players||{}).some(p => p.bookmakerOutcomeId === 'draw' || p.bookmakerOutcomeId === 'x')
+      );
+      const awayOut = Object.values(outcomes).find(o =>
+        Object.values(o.players||{}).some(p => p.bookmakerOutcomeId === 'away' || p.bookmakerOutcomeId === '2')
+      );
+
+      if (homeOut && awayOut && !moneyline) {
+        const homePrice = Object.values(homeOut.players||{})[0]?.price;
+        const drawPrice = drawOut ? Object.values(drawOut.players||{})[0]?.price : null;
+        const awayPrice = Object.values(awayOut.players||{})[0]?.price;
+        if (homePrice && awayPrice) {
+          moneyline = { home: homePrice, away: awayPrice, draw: drawPrice };
+          console.log(`  ML: ${home} ${homePrice} / Draw ${drawPrice} / ${away} ${awayPrice}`);
+        }
+      }
+
+      // ── Total Goals ──
+      const overOut  = Object.values(outcomes).find(o =>
+        Object.values(o.players||{}).some(p =>
+          p.bookmakerOutcomeId?.toLowerCase().includes('over') ||
+          p.bookmakerOutcomeId === 'o'
+        )
+      );
+      const underOut = Object.values(outcomes).find(o =>
+        Object.values(o.players||{}).some(p =>
+          p.bookmakerOutcomeId?.toLowerCase().includes('under') ||
+          p.bookmakerOutcomeId === 'u'
+        )
+      );
+      if (overOut && underOut && !total) {
+        const overPlayer  = Object.values(overOut.players||{})[0];
+        const underPlayer = Object.values(underOut.players||{})[0];
+        if (overPlayer?.price && underPlayer?.price) {
+          // Try to get the line from the player data
+          const line = overPlayer.line ?? overPlayer.handicap ?? 2.5;
+          total = { line, over: overPlayer.price, under: underPlayer.price };
+          console.log(`  Total: O${line} ${overPlayer.price} / U${line} ${underPlayer.price}`);
+        }
+      }
+
+      // ── Asian Handicap / Spread ──
+      // Each team's outcome is identified by their name or home/away position
+      const spreadOutcomes = Object.values(outcomes);
+      if (spreadOutcomes.length === 2 && !spread) {
+        const p1 = Object.values(spreadOutcomes[0].players||{})[0];
+        const p2 = Object.values(spreadOutcomes[1].players||{})[0];
+        // Check if these have handicap/line values and match our teams
+        const out1Name = spreadOutcomes[0].players?.['0']?.playerName ||
+                         spreadOutcomes[0].players?.['0']?.bookmakerOutcomeId || '';
+        const out2Name = spreadOutcomes[1].players?.['0']?.playerName ||
+                         spreadOutcomes[1].players?.['0']?.bookmakerOutcomeId || '';
+
+        if (p1?.price && p2?.price && (p1?.handicap != null || p1?.line != null)) {
+          const line1 = p1.handicap ?? p1.line ?? 0;
+          const line2 = p2.handicap ?? p2.line ?? -line1;
+
+          // Assign to home/away by matching team name in the outcome
+          const out1IsHome = out1Name.toLowerCase().includes(home.toLowerCase().split(' ')[0]) ||
+                             out1Name === 'home' || out1Name === '1';
+
+          if (out1IsHome) {
+            spread = { line: line1, awayLine: line2, homeFav: p1.price, awayDog: p2.price };
+          } else {
+            spread = { line: line2, awayLine: line1, homeFav: p2.price, awayDog: p1.price };
+          }
+          console.log(`  Spread: ${home} ${spread.line} (${spread.homeFav}) / ${away} ${spread.awayLine} (${spread.awayDog})`);
+        }
+      }
+    }
+
+    if (!moneyline) {
+      console.log(`Skipping ${home} vs ${away} — no moneyline`);
+      continue;
+    }
+
+    // ── Derive TNB from moneyline ──
     let tnb;
     if (moneyline.draw) {
       const iH = toImplied(moneyline.home);
       const iA = toImplied(moneyline.away);
       const tot = iH + iA;
-      tnb = { home: toAmerican(iH / tot), away: toAmerican(iA / tot) };
+      tnb = { home: toAmerican(iH/tot), away: toAmerican(iA/tot) };
     } else {
       tnb = { home: moneyline.home, away: moneyline.away };
     }
 
-    // ── Double Chance (derived) ──
-    let dc = null;
+    // ── Derive Double Chance from moneyline ──
+    let dc;
     if (moneyline.draw) {
       const iH = toImplied(moneyline.home);
       const iA = toImplied(moneyline.away);
       const iD = toImplied(moneyline.draw);
       dc = {
-        homeOrDraw: toAmerican(Math.min(iH + iD, 0.99)),
-        awayOrDraw: toAmerican(Math.min(iA + iD, 0.99)),
-        homeOrAway: toAmerican(Math.min(iH + iA, 0.99)),
+        homeOrDraw: toAmerican(Math.min(iH+iD, 0.99)),
+        awayOrDraw: toAmerican(Math.min(iA+iD, 0.99)),
+        homeOrAway: toAmerican(Math.min(iH+iA, 0.99)),
       };
     } else {
       dc = { homeOrDraw: -300, awayOrDraw: -300, homeOrAway: -200 };
     }
 
-    // ── Total Goals — stored directly by BALLDONTLIE ──
-    let total = null;
-    if (odds?.total_value && odds?.total_over_odds && odds?.total_under_odds) {
-      total = {
-        line:  odds.total_value,
-        over:  odds.total_over_odds,
-        under: odds.total_under_odds,
-      };
-    } else {
-      total = { line: 2.5, over: -110, under: -110 };
-    }
-
-    // ── Spread — stored by BALLDONTLIE with explicit home/away values & team names ──
-    let spread = null;
-    if (odds?.spread_home_value != null && odds?.spread_away_value != null
-        && odds?.spread_home_odds && odds?.spread_away_odds) {
-      // BALLDONTLIE returns spread_home_value for the home team and
-      // spread_away_value for the away team — no positional guessing needed
-      spread = {
-        line:     odds.spread_home_value,  // home team's handicap (e.g. -1 means home favored)
-        awayLine: odds.spread_away_value,  // away team's handicap (e.g. +1)
-        homeFav:  odds.spread_home_odds,
-        awayDog:  odds.spread_away_odds,
-      };
-      console.log(`Spread: ${home} ${odds.spread_home_value} (${odds.spread_home_odds}) vs ${away} ${odds.spread_away_value} (${odds.spread_away_odds})`);
-    } else {
-      // No spread available — use default
-      spread = { line: -0.5, awayLine: 0.5, homeFav: -110, awayDog: -110 };
-      console.log(`No spread data for: ${home} vs ${away} — using default`);
-    }
+    // Fallbacks
+    if (!total)  total  = { line: 2.5, over: -110, under: -110 };
+    if (!spread) spread = { line: -0.5, awayLine: 0.5, homeFav: -110, awayDog: -110 };
 
     const matchDoc = {
-      id:         String(match.id),
-      home,
-      away,
+      id:         fixture.fixtureId,
+      home, away,
       kickoffUTC,
       ctLabel,
-      moneyline,
-      tnb,
-      total,
-      spread,
-      dc,
+      moneyline, tnb, total, spread, dc,
       updatedAt:  new Date().toISOString(),
     };
 
-    const ref = db.collection('matches').doc(String(match.id));
+    const ref = db.collection('matches').doc(fixture.fixtureId);
     batch.set(ref, matchDoc);
     written++;
   }
 
-  // Write metadata
   const metaRef = db.collection('meta').doc('odds');
   batch.set(metaRef, {
     lastUpdated: new Date().toISOString(),
-    matchCount: written,
-    source: 'balldontlie',
+    matchCount:  written,
+    source:      'oddspapi',
   });
 
   await batch.commit();
   console.log(`\n✓ Wrote ${written} matches to Firebase`);
+  console.log('Requests used this run: 1');
 }
 
 run().catch(err => {
