@@ -81,7 +81,9 @@ function getLine(outcome) {
 }
  
 async function run() {
-  const url = `${BASE}/odds-by-tournaments?tournamentIds=${WC_TOURNAMENT_ID}&bookmaker=${BOOKMAKER}&apiKey=${API_KEY}`;
+  // Market IDs: 101=1X2 moneyline, 106=Over/Under totals
+  // Asian Handicap ID to be confirmed — start with these two
+  const url = `${BASE}/odds-by-tournaments?tournamentIds=${WC_TOURNAMENT_ID}&bookmaker=${BOOKMAKER}&marketIds=101,106&oddsFormat=american&apiKey=${API_KEY}`;
   console.log('Fetching World Cup odds from OddsPapi (1 request)...');
  
   const res = await fetch(url);
@@ -98,6 +100,12 @@ async function run() {
   console.log('Status breakdown:', JSON.stringify(statusCounts));
   const hasOddsCount = fixtures.filter(f => f.hasOdds).length;
   console.log(`hasOdds=true: ${hasOddsCount}`);
+ 
+  // Debug: show raw bookmakerOdds for first fixture
+  const first = fixtures[0];
+  if (first) {
+    console.log('First fixture bookmakerOdds:', JSON.stringify(first.bookmakerOdds, null, 2).slice(0, 2000));
+  }
  
   let written = 0, skipped = 0;
   const batch = db.batch();
@@ -242,3 +250,4 @@ run().catch(err => {
   console.error('fetch-odds failed:', err);
   process.exit(1);
 });
+ 
