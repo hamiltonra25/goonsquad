@@ -1,38 +1,33 @@
 name: Auto-Settle Scores
 
 on:
- schedule:
-   # Run at specific times CT (CDT = UTC-5) — GitHub cron is in UTC
-   # These align with end of typical match windows: 6PM, 9PM, 11PM, 2AM, 5AM CT
-   - cron: '0 23 * * *'   # 6:00 PM CT
-   - cron: '0 2 * * *'    # 9:00 PM CT
-   - cron: '0 4 * * *'    # 11:00 PM CT
-   - cron: '0 7 * * *'    # 2:00 AM CT
-   - cron: '0 10 * * *'   # 5:00 AM CT
-   - cron: '30 15 * * *'  # 10:30 AM CT (catch morning games)
-   - cron: '30 18 * * *'  # 1:30 PM CT (catch afternoon games)
-   - cron: '30 21 * * *'  # 4:30 PM CT (catch early evening games)
- workflow_dispatch: # allow manual trigger
+  schedule:
+    # Every 5 minutes during peak game hours (11AM-midnight CT = 4PM-5AM UTC)
+    - cron: '*/5 16-23 * * *'   # 11AM-6PM CT every 5 min
+    - cron: '*/5 0-5 * * *'     # 7PM-midnight CT every 5 min
+    # Every 30 minutes overnight (midnight-11AM CT = 5AM-4PM UTC)
+    - cron: '*/30 6-15 * * *'   # midnight-10AM CT every 30 min
+  workflow_dispatch:
 
 jobs:
- settle:
-   runs-on: ubuntu-latest
-   steps:
-     - name: Checkout repo
-       uses: actions/checkout@v4
+  settle:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
 
-     - name: Setup Node.js
-       uses: actions/setup-node@v4
-       with:
-         node-version: '20'
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
 
-     - name: Install dependencies
-       run: npm install firebase-admin node-fetch
+      - name: Install dependencies
+        run: npm install firebase-admin node-fetch
 
-     - name: Fetch scores and settle bets
-       env:
-         FOOTBALL_DATA_KEY: ${{ secrets.FOOTBALL_DATA_KEY }}
-         FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
-         FIREBASE_CLIENT_EMAIL: ${{ secrets.FIREBASE_CLIENT_EMAIL }}
-         FIREBASE_PRIVATE_KEY: ${{ secrets.FIREBASE_PRIVATE_KEY }}
-       run: node settle-scores.js
+      - name: Fetch scores and settle bets
+        env:
+          FOOTBALL_DATA_KEY: ${{ secrets.FOOTBALL_DATA_KEY }}
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          FIREBASE_CLIENT_EMAIL: ${{ secrets.FIREBASE_CLIENT_EMAIL }}
+          FIREBASE_PRIVATE_KEY: ${{ secrets.FIREBASE_PRIVATE_KEY }}
+        run: node settle-scores.js
