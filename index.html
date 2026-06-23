@@ -55,6 +55,20 @@
   .odds-slot.pending { background: #FFF8E6; color: #BA7517; }
   .odds-slot.missed { background: #FCEBEB; color: #A32D2D; }
 
+  /* ── Softball ── */
+  .softball-game { background:#fff; border:1px solid #e8e8e8; border-radius:10px; padding:14px 16px; margin-bottom:10px; }
+  .softball-game-title { font-weight:700; font-size:15px; margin-bottom:2px; }
+  .softball-game-sub { font-size:12px; color:#888; margin-bottom:10px; }
+  .softball-bet-row { display:flex; align-items:center; gap:8px; margin-bottom:6px; flex-wrap:wrap; }
+  .softball-bet-label { font-size:12px; color:#555; min-width:140px; }
+  .softball-odds-pill { background:#f0f4fb; border:1px solid #c8d8f0; border-radius:20px; padding:4px 14px; font-size:13px; font-weight:600; color:#185FA5; cursor:pointer; transition:background .15s; }
+  .softball-odds-pill:hover, .softball-odds-pill.selected { background:#185FA5; color:#fff; border-color:#185FA5; }
+  .softball-create-form { background:#f8f8f8; border:1px dashed #ccc; border-radius:10px; padding:16px; margin-bottom:16px; }
+  .softball-create-form input, .softball-create-form select { width:100%; padding:8px 10px; border:1px solid #ddd; border-radius:7px; font-size:13px; margin-bottom:8px; box-sizing:border-box; }
+  .softball-create-form label { font-size:11px; color:#888; font-weight:600; display:block; margin-bottom:3px; margin-top:6px; }
+  .softball-prop-row { display:flex; gap:8px; }
+  .softball-prop-row input { flex:1; }
+
   /* ── Date dividers ── */
   .date-divider { font-size: 11px; font-weight: 600; color: #bbb; text-transform: uppercase; letter-spacing: 0.06em; padding: 10px 2px 4px; margin-top: 4px; border-top: 1px solid #ebebeb; }
   .date-divider:first-child { border-top: none; margin-top: 0; padding-top: 2px; }
@@ -226,7 +240,7 @@ function formatCT(ts) {
 }
 
 // ── State ──
-let db, currentPlayer = null, balances = {}, bets = [], betType = "Moneyline", scores = {}, oddsLastUpdated = null, oddsLoaded = false;
+let db, currentPlayer = null, balances = {}, bets = [], betType = "Moneyline", scores = {}, oddsLastUpdated = null, oddsLoaded = false, softballGames = [];
 let selected = null, wagerVal = "", wagerError = "", activeTab = "wager", now = Date.now();
 let unsubBets = null, unsubBalances = null;
 let configMode = false;
@@ -584,6 +598,7 @@ function renderMain(app) {
       <button class="tab-btn ${activeTab==="all"?"active":""}" data-tab="all">All Bets</button>
       <button class="tab-btn ${activeTab==="leaderboard"?"active":""}" data-tab="leaderboard">Leaderboard</button>
       ${currentPlayer === "R3" ? `<button class="tab-btn ${activeTab==="commissioner"?"active":""}" data-tab="commissioner" style="color:#993C1D;">Commissioner</button>` : ""}
+      <button class="tab-btn ${activeTab==="softball"?"active":""}" data-tab="softball">⚾ Softball</button>
     </div>`;
 
   // ── ODDS & BETS ──
@@ -854,6 +869,135 @@ function renderMain(app) {
 
   }
 
+  // ── SOFTBALL ──
+  if (activeTab === "softball") {
+    const myGameBets = bets.filter(b => b.betType && b.betType.startsWith('SB_') && b.player === currentPlayer);
+
+    // Commissioner create form
+    if (currentPlayer === "R3") {
+      html += `<div class="softball-create-form">
+        <div style="font-weight:700;font-size:14px;margin-bottom:10px;color:#993C1D;">⚾ Create New Softball Game</div>
+        <label>Opponent Name</label><input id="sb-opponent" placeholder="e.g. The Crushers" />
+        <label>Date &amp; Time</label><input id="sb-date" placeholder="e.g. Tue Jun 24 · 6:30 PM CT" />
+        <div style="font-weight:600;font-size:12px;color:#555;margin:10px 0 4px;">Lines (leave blank to exclude)</div>
+        <div class="softball-prop-row">
+          <div style="flex:1"><label>Nice Ash ML odds</label><input id="sb-ml-home" placeholder="-150" /></div>
+          <div style="flex:1"><label>Opponent ML odds</label><input id="sb-ml-away" placeholder="+130" /></div>
+        </div>
+        <div class="softball-prop-row">
+          <div style="flex:1"><label>Run line (Nice Ash, e.g. -3.5)</label><input id="sb-spread-line" placeholder="-3.5" /></div>
+          <div style="flex:1"><label>Nice Ash odds</label><input id="sb-spread-home" placeholder="-110" /></div>
+          <div style="flex:1"><label>Opponent odds</label><input id="sb-spread-away" placeholder="-110" /></div>
+        </div>
+        <div class="softball-prop-row">
+          <div style="flex:1"><label>Total Runs line</label><input id="sb-total-line" placeholder="8.5" /></div>
+          <div style="flex:1"><label>Over odds</label><input id="sb-total-over" placeholder="-110" /></div>
+          <div style="flex:1"><label>Under odds</label><input id="sb-total-under" placeholder="-110" /></div>
+        </div>
+        <div class="softball-prop-row">
+          <div style="flex:1"><label>AK FDP line</label><input id="sb-ak-fdp-line" placeholder="22.5" /></div>
+          <div style="flex:1"><label>Over odds</label><input id="sb-ak-fdp-over" placeholder="-115" /></div>
+          <div style="flex:1"><label>Under odds</label><input id="sb-ak-fdp-under" placeholder="-105" /></div>
+        </div>
+        <div class="softball-prop-row">
+          <div style="flex:1"><label>R3 FDP line</label><input id="sb-r3-fdp-line" placeholder="18.5" /></div>
+          <div style="flex:1"><label>Over odds</label><input id="sb-r3-fdp-over" placeholder="-115" /></div>
+          <div style="flex:1"><label>Under odds</label><input id="sb-r3-fdp-under" placeholder="-105" /></div>
+        </div>
+        <div class="softball-prop-row">
+          <div style="flex:1"><label>AK Homer Yes odds</label><input id="sb-ak-homer" placeholder="+250" /></div>
+          <div style="flex:1"><label>R3 Homer Yes odds</label><input id="sb-r3-homer" placeholder="+300" /></div>
+        </div>
+        <label>Prop Bet Label</label><input id="sb-prop-label" placeholder="e.g. First to score 5 runs" />
+        <div class="softball-prop-row">
+          <div style="flex:1"><label>Option 1 label</label><input id="sb-prop-opt1-label" placeholder="Nice Ash" /></div>
+          <div style="flex:1"><label>Option 1 odds</label><input id="sb-prop-opt1-odds" placeholder="-130" /></div>
+        </div>
+        <div class="softball-prop-row">
+          <div style="flex:1"><label>Option 2 label</label><input id="sb-prop-opt2-label" placeholder="Opponent" /></div>
+          <div style="flex:1"><label>Option 2 odds</label><input id="sb-prop-opt2-odds" placeholder="+110" /></div>
+        </div>
+        <button id="sb-create-btn" style="margin-top:10px;width:100%;padding:10px;background:#185FA5;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;">Create Game</button>
+      </div>`;
+    }
+
+    if (softballGames.length === 0 && currentPlayer !== "R3") {
+      html += '<div style="text-align:center;color:#aaa;padding:3rem 0;font-size:14px;">⚾ No softball games yet.</div>';
+    }
+
+    function fmtOdds(o) { return o > 0 ? '+'+o : ''+o; }
+
+    function sbPill(gameId, key, label, odds, betType) {
+      const alreadyBet = myGameBets.some(b => b.matchId === gameId && b.optionKey === key);
+      const cls = alreadyBet ? ' selected' : '';
+      return '<span class="softball-odds-pill' + cls + '" data-sbgame="' + gameId + '" data-sbkey="' + key + '" data-sbodds="' + odds + '" data-sblabel="' + label + '" data-sbtype="' + betType + '">' + label + ' ' + fmtOdds(odds) + '</span>';
+    }
+
+    softballGames.forEach(game => {
+      const locked = game.locked || false;
+      html += '<div class="softball-game">';
+      html += '<div class="softball-game-title">' + (game.opponent||'TBD') + ' vs Nice Ash</div>';
+      html += '<div class="softball-game-sub">' + (game.dateLabel||'') + (locked?' · 🔒 Locked':'') + '</div>';
+
+      if (game.ml) {
+        html += '<div class="softball-bet-row"><div class="softball-bet-label">Moneyline</div>';
+        html += sbPill(game.id,'sb_ml_home','Nice Ash',game.ml.home,'SB_Moneyline');
+        html += sbPill(game.id,'sb_ml_away',game.opponent||'Opponent',game.ml.away,'SB_Moneyline');
+        html += '</div>';
+      }
+      if (game.spread) {
+        const hl = game.spread.line; const al = -hl;
+        html += '<div class="softball-bet-row"><div class="softball-bet-label">Run Line</div>';
+        html += sbPill(game.id,'sb_spread_home','Nice Ash '+(hl>=0?'+':'')+hl,game.spread.homeOdds,'SB_Spread');
+        html += sbPill(game.id,'sb_spread_away',(game.opponent||'Opp')+' '+(al>=0?'+':'')+al,game.spread.awayOdds,'SB_Spread');
+        html += '</div>';
+      }
+      if (game.total) {
+        html += '<div class="softball-bet-row"><div class="softball-bet-label">Total Runs ('+game.total.line+')</div>';
+        html += sbPill(game.id,'sb_total_over','Over',game.total.over,'SB_Total');
+        html += sbPill(game.id,'sb_total_under','Under',game.total.under,'SB_Total');
+        html += '</div>';
+      }
+      if (game.akFdp) {
+        html += '<div class="softball-bet-row"><div class="softball-bet-label">AK FDP ('+game.akFdp.line+')</div>';
+        html += sbPill(game.id,'sb_ak_fdp_over','Over',game.akFdp.over,'SB_AK_FDP');
+        html += sbPill(game.id,'sb_ak_fdp_under','Under',game.akFdp.under,'SB_AK_FDP');
+        html += '</div>';
+      }
+      if (game.r3Fdp) {
+        html += '<div class="softball-bet-row"><div class="softball-bet-label">R3 FDP ('+game.r3Fdp.line+')</div>';
+        html += sbPill(game.id,'sb_r3_fdp_over','Over',game.r3Fdp.over,'SB_R3_FDP');
+        html += sbPill(game.id,'sb_r3_fdp_under','Under',game.r3Fdp.under,'SB_R3_FDP');
+        html += '</div>';
+      }
+      if (game.akHomer) {
+        html += '<div class="softball-bet-row"><div class="softball-bet-label">AK Homer</div>';
+        html += sbPill(game.id,'sb_ak_homer_yes','Yes',game.akHomer,'SB_Homer');
+        html += '</div>';
+      }
+      if (game.r3Homer) {
+        html += '<div class="softball-bet-row"><div class="softball-bet-label">R3 Homer</div>';
+        html += sbPill(game.id,'sb_r3_homer_yes','Yes',game.r3Homer,'SB_Homer');
+        html += '</div>';
+      }
+      if (game.prop && game.prop.label) {
+        html += '<div class="softball-bet-row"><div class="softball-bet-label">'+game.prop.label+'</div>';
+        html += sbPill(game.id,'sb_prop_opt1',game.prop.opt1Label,game.prop.opt1Odds,'SB_Prop');
+        if (game.prop.opt2Label) html += sbPill(game.id,'sb_prop_opt2',game.prop.opt2Label,game.prop.opt2Odds,'SB_Prop');
+        html += '</div>';
+      }
+
+      if (currentPlayer === "R3") {
+        html += '<div style="margin-top:10px;padding-top:10px;border-top:1px solid #eee;display:flex;gap:8px;flex-wrap:wrap;">';
+        html += '<button class="sb-settle-btn" data-gameid="'+game.id+'" style="font-size:11px;padding:4px 12px;background:#3B6D11;color:#fff;border:none;border-radius:6px;cursor:pointer;">Settle Game</button>';
+        html += '<button class="sb-lock-btn" data-gameid="'+game.id+'" data-locked="'+locked+'" style="font-size:11px;padding:4px 12px;background:'+(locked?'#888':'#C86A00')+';color:#fff;border:none;border-radius:6px;cursor:pointer;">'+(locked?'Unlock':'Lock Bets')+'</button>';
+        html += '<button class="sb-delete-btn" data-gameid="'+game.id+'" style="font-size:11px;padding:4px 12px;background:#eee;color:#666;border:none;border-radius:6px;cursor:pointer;">Delete Game</button>';
+        html += '</div>';
+      }
+      html += '</div>';
+    });
+  }
+
   html += `</div>`;  // close whatever tab div — actually we didn't open one, so fine
   app.innerHTML = html;
 
@@ -919,6 +1063,139 @@ function renderMain(app) {
   document.getElementById("place-btn")?.addEventListener("click", placeBet);
 
   document.getElementById("inject-bets-btn")?.addEventListener("click", forceInjectBets);
+
+  // ── Softball: Create Game ──
+  document.getElementById("sb-create-btn")?.addEventListener("click", async () => {
+    const opponent  = document.getElementById("sb-opponent")?.value.trim();
+    const dateLabel = document.getElementById("sb-date")?.value.trim();
+    if (!opponent) { toast("Enter opponent name.", "error"); return; }
+
+    const g = (id) => document.getElementById(id)?.value.trim();
+    const n = (id) => { const v = parseFloat(g(id)); return isNaN(v) ? null : v; };
+
+    const gameData = {
+      opponent, dateLabel,
+      createdAt: Date.now(),
+      locked: false,
+    };
+
+    if (g("sb-ml-home") && g("sb-ml-away"))
+      gameData.ml = { home: parseInt(g("sb-ml-home")), away: parseInt(g("sb-ml-away")) };
+
+    if (g("sb-spread-line") && g("sb-spread-home"))
+      gameData.spread = { line: parseFloat(g("sb-spread-line")), homeOdds: parseInt(g("sb-spread-home")), awayOdds: parseInt(g("sb-spread-away")||"-110") };
+
+    if (g("sb-total-line") && g("sb-total-over"))
+      gameData.total = { line: parseFloat(g("sb-total-line")), over: parseInt(g("sb-total-over")), under: parseInt(g("sb-total-under")) };
+
+    if (g("sb-ak-fdp-line") && g("sb-ak-fdp-over"))
+      gameData.akFdp = { line: parseFloat(g("sb-ak-fdp-line")), over: parseInt(g("sb-ak-fdp-over")), under: parseInt(g("sb-ak-fdp-under")) };
+
+    if (g("sb-r3-fdp-line") && g("sb-r3-fdp-over"))
+      gameData.r3Fdp = { line: parseFloat(g("sb-r3-fdp-line")), over: parseInt(g("sb-r3-fdp-over")), under: parseInt(g("sb-r3-fdp-under")) };
+
+    if (g("sb-ak-homer"))  gameData.akHomer = parseInt(g("sb-ak-homer"));
+    if (g("sb-r3-homer"))  gameData.r3Homer = parseInt(g("sb-r3-homer"));
+
+    if (g("sb-prop-label") && g("sb-prop-opt1-label"))
+      gameData.prop = { label: g("sb-prop-label"), opt1Label: g("sb-prop-opt1-label"), opt1Odds: parseInt(g("sb-prop-opt1-odds")), opt2Label: g("sb-prop-opt2-label"), opt2Odds: parseInt(g("sb-prop-opt2-odds")) };
+
+    await addDoc(collection(db, "softball_games"), gameData);
+    toast("⚾ Game created!", "success");
+    await loadSoftballGames();
+  });
+
+  // ── Softball: Odds pill click → place bet ──
+  app.querySelectorAll(".softball-odds-pill:not(.selected)").forEach(pill => {
+    pill.addEventListener("click", async () => {
+      const gameId    = pill.dataset.sbgame;
+      const optionKey = pill.dataset.sbkey;
+      const odds      = parseInt(pill.dataset.sbodds);
+      const label     = pill.dataset.sblabel;
+      const betType   = pill.dataset.sbtype;
+      const game      = softballGames.find(g => g.id === gameId);
+      if (!game || game.locked) { toast("Bets are locked for this game.", "error"); return; }
+
+      const wager = parseInt(prompt("How many shares to wager?"));
+      if (!wager || wager < 10) { toast("Minimum wager is 10 shares.", "error"); return; }
+      const bal = balances[currentPlayer] ?? INITIAL_SHARES;
+      if (wager > bal) { toast("Not enough shares.", "error"); return; }
+
+      const toWin = odds > 0 ? Math.round(wager * odds / 100) : Math.round(wager * 100 / Math.abs(odds));
+
+      await addDoc(collection(db, "bets"), {
+        player: currentPlayer,
+        matchId: gameId,
+        matchLabel: (game.opponent||'Opponent') + " vs Nice Ash",
+        ctLabel: game.dateLabel || "",
+        betType, optionKey, optionLabel: label, odds, wager, toWin,
+        status: "pending",
+        isSoftball: true,
+        createdAt: serverTimestamp(),
+      });
+      await setDoc(doc(db, "balances", currentPlayer), { amount: bal - wager });
+      toast("⚾ Bet placed!", "success");
+    });
+  });
+
+  // ── Softball: Lock/Unlock ──
+  app.querySelectorAll(".sb-lock-btn").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const gameId = btn.dataset.gameid;
+      const locked = btn.dataset.locked === "true";
+      await updateDoc(doc(db, "softball_games", gameId), { locked: !locked });
+      toast(locked ? "Game unlocked." : "Bets locked.", "success");
+      await loadSoftballGames();
+    });
+  });
+
+  // ── Softball: Delete Game ──
+  app.querySelectorAll(".sb-delete-btn").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      if (!confirm("Delete this game and all its bets?")) return;
+      const gameId = btn.dataset.gameid;
+      // Refund all pending bets
+      const gameBets = bets.filter(b => b.matchId === gameId && b.status === "pending");
+      for (const bet of gameBets) {
+        const bal = balances[bet.player] ?? INITIAL_SHARES;
+        await setDoc(doc(db, "balances", bet.player), { amount: bal + bet.wager });
+        await updateDoc(doc(db, "bets", bet.id), { status: "refunded" });
+      }
+      await deleteDoc(doc(db, "softball_games", gameId));
+      toast("Game deleted, pending bets refunded.", "success");
+      await loadSoftballGames();
+    });
+  });
+
+  // ── Softball: Settle Game ──
+  app.querySelectorAll(".sb-settle-btn").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const gameId   = btn.dataset.gameid;
+      const game     = softballGames.find(g => g.id === gameId);
+      const gameBets = bets.filter(b => b.matchId === gameId && b.status === "pending");
+      if (gameBets.length === 0) { toast("No pending bets to settle.", "error"); return; }
+
+      // Build settle form
+      const keys = [...new Set(gameBets.map(b => b.optionKey))];
+      const winnerKey = prompt("Which option won?\n\nOptions:\n" + keys.join("\n") + "\n\nEnter the exact key:");
+      if (!winnerKey) return;
+
+      for (const bet of gameBets) {
+        let result;
+        if (bet.optionKey === winnerKey) result = "won";
+        else result = "lost";
+
+        await updateDoc(doc(db, "bets", bet.id), { status: result });
+        if (result === "won") {
+          const bal = balances[bet.player] ?? INITIAL_SHARES;
+          await setDoc(doc(db, "balances", bet.player), { amount: bal + bet.wager + bet.toWin });
+        }
+      }
+      await updateDoc(doc(db, "softball_games", gameId), { locked: true });
+      toast("⚾ Game settled!", "success");
+      await loadSoftballGames();
+    });
+  });
 
   // Refresh Odds button — triggers GitHub Actions workflow dispatch
   document.getElementById("refresh-odds-btn")?.addEventListener("click", async () => {
