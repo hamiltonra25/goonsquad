@@ -615,6 +615,7 @@ function renderMain(app) {
       <button class="tab-btn ${activeTab==="leaderboard"?"active":""}" data-tab="leaderboard">Leaderboard</button>
       ${currentPlayer === "R3" ? `<button class="tab-btn ${activeTab==="commissioner"?"active":""}" data-tab="commissioner" style="color:#993C1D;">Commissioner</button>` : ""}
       <button class="tab-btn ${activeTab==="softball"?"active":""}" data-tab="softball">⚾ Softball</button>
+      <button class="tab-btn ${activeTab==="sbleaderboard"?"active":""}" data-tab="sbleaderboard">⚾ Standings</button>
     </div>`;
 
   // ── ODDS & BETS ──
@@ -1017,6 +1018,62 @@ function renderMain(app) {
         html += '</div>';
       }
       html += '</div>';
+    });
+  }
+
+  // ── SOFTBALL LEADERBOARD ──
+  if (activeTab === "sbleaderboard") {
+    // Build leaderboard sorted by softball balance
+    const sbLeaderboard = [...PLAYERS].map((p, idx) => ({
+      player: p, idx,
+      balance: softballBalances[p] ?? 0,
+    })).sort((a,b) => b.balance - a.balance);
+
+    html += '<div style="margin-bottom:8px;font-size:11px;color:#888;text-align:right;">Softball standings · Separate from World Cup</div>';
+
+    sbLeaderboard.forEach((entry, rank) => {
+      const playerBetsAll = bets.filter(b => b.player === entry.player && b.isSoftball);
+      const wonBets  = playerBetsAll.filter(b => b.status === "won");
+      const lostBets = playerBetsAll.filter(b => b.status === "lost");
+      const pushBets = playerBetsAll.filter(b => b.status === "push");
+      const pendBets = playerBetsAll.filter(b => b.status === "pending");
+      const wonAmt   = wonBets.reduce((s,b) => s + b.toWin, 0);
+      const lostAmt  = lostBets.reduce((s,b) => s + b.wager, 0);
+      const drawAmt  = pushBets.reduce((s,b) => s + b.wager, 0);
+      const pendAmt  = pendBets.reduce((s,b) => s + b.wager, 0);
+      const pendPot  = entry.balance + pendBets.reduce((s,b) => s + b.wager + b.toWin, 0);
+      const balColor = entry.balance >= 0 ? "#3B6D11" : "#A32D2D";
+
+      html += `<div class="lb-row" style="border-left:4px solid ${PLAYER_COLORS[entry.idx]};display:flex;flex-direction:column;align-items:stretch;gap:8px;padding:12px 14px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="font-size:16px;font-weight:600;color:#ccc;min-width:28px;">#${rank+1}</div>
+          <div style="background:${PLAYER_BG[entry.idx]};color:${PLAYER_COLORS[entry.idx]};width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:12px;flex-shrink:0;">${PLAYER_INITIALS[entry.idx]}</div>
+          <div style="flex:1;font-weight:700;font-size:15px;">${entry.player}</div>
+          <div style="font-weight:700;font-size:20px;color:${balColor};">${entry.balance >= 0 ? '+' : ''}${entry.balance.toLocaleString()}</div>
+        </div>
+        <div style="display:flex;align-items:flex-start;padding-left:74px;gap:10px;">
+          <div style="display:flex;gap:16px;flex:1;">
+            <span><div style="font-size:10px;color:#3B6D11;font-weight:600;">Won</div><div style="font-size:13px;font-weight:700;color:#3B6D11;">${wonBets.length}</div></span>
+            <span><div style="font-size:10px;color:#A32D2D;font-weight:600;">Lost</div><div style="font-size:13px;font-weight:700;color:#A32D2D;">${lostBets.length}</div></span>
+            <span><div style="font-size:10px;color:#C86A00;font-weight:600;">Draw</div><div style="font-size:13px;font-weight:700;color:#C86A00;">${pushBets.length}</div></span>
+            <span style="border-left:1px solid #eee;padding-left:14px;"><div style="font-size:10px;color:#185FA5;font-weight:600;">Pending</div><div style="font-size:13px;font-weight:700;color:#185FA5;">${pendBets.length}</div></span>
+          </div>
+          ${pendBets.length > 0 ? `<div style="text-align:center;padding:0 12px;border-left:1px solid #eee;border-right:1px solid #eee;">
+            <div style="font-size:10px;font-weight:600;color:#185FA5;margin-bottom:3px;">Pending Statistics</div>
+            <div style="display:flex;gap:14px;">
+              <span style="text-align:center;"><div style="font-size:10px;color:#185FA5;font-weight:600;text-decoration:underline;">Bets</div><div style="font-size:13px;font-weight:700;color:#185FA5;">${pendBets.length}</div></span>
+              <span style="text-align:center;"><div style="font-size:10px;color:#185FA5;font-weight:600;text-decoration:underline;">Shares</div><div style="font-size:13px;font-weight:700;color:#185FA5;">${pendAmt.toLocaleString()}</div></span>
+              <span style="text-align:center;"><div style="font-size:10px;color:#185FA5;font-weight:600;text-decoration:underline;">Potential</div><div style="font-size:13px;font-weight:700;color:#185FA5;">${pendPot.toLocaleString()}</div></span>
+            </div>
+          </div>` : ''}
+          <div style="display:flex;gap:10px;flex-shrink:0;">
+            <span style="text-align:right;"><div style="font-size:10px;color:#3B6D11;font-weight:600;">Won</div><div style="font-size:12px;font-weight:700;color:#3B6D11;">+${wonAmt.toLocaleString()}</div></span>
+            <span style="text-align:right;"><div style="font-size:10px;color:#A32D2D;font-weight:600;">Lost</div><div style="font-size:12px;font-weight:700;color:#A32D2D;">-${lostAmt.toLocaleString()}</div></span>
+            <span style="text-align:right;"><div style="font-size:10px;color:#C86A00;font-weight:600;">Draw</div><div style="font-size:12px;font-weight:700;color:#C86A00;">${drawAmt.toLocaleString()}</div></span>
+            <span style="text-align:right;border-left:1px solid #eee;padding-left:10px;"><div style="font-size:10px;color:#185FA5;font-weight:600;">Pending</div><div style="font-size:12px;font-weight:700;color:#185FA5;">${pendAmt.toLocaleString()}</div></span>
+          </div>
+        </div>
+      </div>`;
     });
   }
 
