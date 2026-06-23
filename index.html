@@ -389,6 +389,19 @@ setInterval(() => {
 
 // ── Render ──
 function render() {
+  // Save softball create form values before re-render
+  const sbFormFields = ['sb-opponent','sb-date','sb-ml-home','sb-ml-away',
+    'sb-spread-line','sb-spread-home','sb-spread-away',
+    'sb-total-line','sb-total-over','sb-total-under',
+    'sb-ak-fdp-line','sb-ak-fdp-over','sb-ak-fdp-under',
+    'sb-r3-fdp-line','sb-r3-fdp-over','sb-r3-fdp-under',
+    'sb-ak-homer','sb-r3-homer',
+    'sb-prop-label','sb-prop-opt1-label','sb-prop-opt1-odds','sb-prop-opt2-label','sb-prop-opt2-odds'];
+  const sbSaved = {};
+  sbFormFields.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) sbSaved[id] = el.value;
+  });
   const app = document.getElementById("app");
   if (!isConfigured()) { renderConfig(app); return; }
   if (!currentPlayer)  { renderLogin(app); return; }
@@ -1006,6 +1019,14 @@ function renderMain(app) {
 
   html += `</div>`;  // close whatever tab div — actually we didn't open one, so fine
   app.innerHTML = html;
+
+  // Restore softball form values after re-render
+  if (activeTab === "softball") {
+    sbFormFields.forEach(id => {
+      const el = document.getElementById(id);
+      if (el && sbSaved[id]) el.value = sbSaved[id];
+    });
+  }
 
   // ── Event listeners ──
   document.getElementById("logout-btn")?.addEventListener("click", () => {
