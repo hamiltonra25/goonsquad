@@ -240,7 +240,7 @@ function formatCT(ts) {
 }
 
 // ── State ──
-let db, currentPlayer = null, balances = {}, bets = [], betType = "Moneyline", scores = {}, oddsLastUpdated = null, oddsLoaded = false, softballGames = [], softballBalances = {}, sbFormActive = false;
+let db, currentPlayer = null, balances = {}, bets = [], betType = "Moneyline", scores = {}, oddsLastUpdated = null, oddsLoaded = false, softballGames = [], softballBalances = {}, sbFormActive = false, sbFormState = {};
 let selected = null, wagerVal = "", wagerError = "", activeTab = "wager", now = Date.now();
 let unsubBets = null, unsubBalances = null;
 let configMode = false;
@@ -400,10 +400,9 @@ function render() {
     'sb-r3-fdp-line','sb-r3-fdp-over','sb-r3-fdp-under',
     'sb-ak-homer','sb-r3-homer',
     'sb-prop-label','sb-prop-opt1-label','sb-prop-opt1-odds','sb-prop-opt2-label','sb-prop-opt2-odds'];
-  const sbSaved = {};
   sbFormFields.forEach(id => {
     const el = document.getElementById(id);
-    if (el) sbSaved[id] = el.value;
+    if (el && el.value) sbFormState[id] = el.value;
   });
   const app = document.getElementById("app");
   if (!isConfigured()) { renderConfig(app); return; }
@@ -901,7 +900,7 @@ function renderMain(app) {
       html += `<div class="softball-create-form">
         <div style="font-weight:700;font-size:14px;margin-bottom:10px;color:#993C1D;">⚾ Create New Softball Game</div>
         <label>Opponent Name</label><input id="sb-opponent" placeholder="e.g. The Crushers" />
-        <label>Date &amp; Time</label><input id="sb-date" placeholder="e.g. Tue Jun 24 · 6:30 PM CT" />
+        <label>Date &amp; Time (CT)</label><input id="sb-date" type="datetime-local" style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:7px;font-size:13px;margin-bottom:8px;box-sizing:border-box;" />
         <div style="font-weight:600;font-size:12px;color:#555;margin:10px 0 4px;">Lines (leave blank to exclude)</div>
         <div class="softball-prop-row">
           <div style="flex:1"><label>Nice Ash ML odds</label><input id="sb-ml-home" placeholder="-150" /></div>
@@ -1080,13 +1079,11 @@ function renderMain(app) {
   html += `</div>`;  // close whatever tab div — actually we didn't open one, so fine
   app.innerHTML = html;
 
-  // Restore softball form values after re-render
-  if (activeTab === "softball") {
-    sbFormFields.forEach(id => {
-      const el = document.getElementById(id);
-      if (el && sbSaved[id]) el.value = sbSaved[id];
-    });
-  }
+  // Restore softball form values after re-render (always, from persistent state)
+  sbFormFields.forEach(id => {
+    const el = document.getElementById(id);
+    if (el && sbFormState[id]) el.value = sbFormState[id];
+  });
 
   // ── Event listeners ──
   document.getElementById("logout-btn")?.addEventListener("click", () => {
@@ -1168,7 +1165,16 @@ function renderMain(app) {
 
   document.getElementById("sb-create-btn")?.addEventListener("click", async () => {
     const opponent  = document.getElementById("sb-opponent")?.value.trim();
-    const dateLabel = document.getElementById("sb-date")?.value.trim();
+    const sbDateRaw = document.getElementById("sb-date")?.value;
+    let dateLabel = "";
+    if (sbDateRaw) {
+      const d = new Date(sbDateRaw);
+      dateLabel = d.toLocaleString("en-US", {
+        timeZone: "America/Chicago",
+        weekday: "short", month: "short", day: "numeric",
+        hour: "numeric", minute: "2-digit", hour12: true
+      }).replace(",", " ·") + " CT";
+    }
     if (!opponent) { toast("Enter opponent name.", "error"); return; }
 
     const g = (id) => document.getElementById(id)?.value.trim();
@@ -1203,6 +1209,7 @@ function renderMain(app) {
 
     await addDoc(collection(db, "softball_games"), gameData);
     toast("⚾ Game created!", "success");
+    sbFormState = {};
     await loadSoftballGames();
     await loadSoftballBalances();
   });
