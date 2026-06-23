@@ -389,9 +389,6 @@ setInterval(() => {
 
 // ── Render ──
 function render() {
-  // Don't re-render while user is typing in softball form
-  if (sbFormActive) return;
-
   // Save softball create form values before re-render
   const sbFormFields = ['sb-opponent','sb-date','sb-ml-home','sb-ml-away',
     'sb-spread-line','sb-spread-home','sb-spread-away',
