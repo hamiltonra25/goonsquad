@@ -1,11 +1,11 @@
 // fetch-odds.js
 // Fetches World Cup 2026 odds from OddsPapi — 1 request per run
 // Tournament ID 16 = FIFA World Cup 2026
-
+ 
 import fetch from 'node-fetch';
 import { initializeApp, cert } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
-
+ 
 initializeApp({
   credential: cert({
     projectId:   process.env.FIREBASE_PROJECT_ID,
@@ -14,12 +14,12 @@ initializeApp({
   }),
 });
 const db = getFirestore();
-
+ 
 const API_KEY          = process.env.ODDSPAPI_KEY;
 const BASE             = 'https://api.oddspapi.io/v4';
 const WC_TOURNAMENT_ID = 16;
 const BOOKMAKER        = 'pinnacle';
-
+ 
 // Hardcoded participant ID -> display name map
 // Built from /v4/participants?sportId=10, filtered to World Cup 2026 teams
 // These IDs are stable — Argentina is always 4819, Brazil always 4748, etc.
@@ -95,7 +95,7 @@ const PARTICIPANT_MAP = {
   180004: 'Algeria',
   48789: 'Algeria',
 };
-
+ 
 // Normalize display names for consistency
 const DISPLAY_NAMES = {
   'IR Iran': 'Iran',
@@ -109,13 +109,13 @@ const DISPLAY_NAMES = {
   'Republic of Korea': 'Korea Republic',
   'South Korea': 'Korea Republic',
 };
-
+ 
 function getTeamName(id) {
   const raw = PARTICIPANT_MAP[id];
   if (!raw) return null;
   return DISPLAY_NAMES[raw] || raw;
 }
-
+ 
 function toCTLabel(isoString) {
   const d = new Date(isoString);
   return d.toLocaleString('en-US', {
@@ -124,7 +124,7 @@ function toCTLabel(isoString) {
     hour: 'numeric', minute: '2-digit', hour12: true,
   }).replace(',', ' ·') + ' CT';
 }
-
+ 
 function toImplied(price) {
   return price > 0 ? 100/(price+100) : Math.abs(price)/(Math.abs(price)+100);
 }
@@ -132,7 +132,7 @@ function toAmerican(prob) {
   prob = Math.min(Math.max(prob, 0.01), 0.99);
   return prob >= 0.5 ? Math.round(-prob/(1-prob)*100) : Math.round((1-prob)/prob*100);
 }
-
+ 
 // Get American price from an outcome object
 function getPrice(outcome) {
   const player = Object.values(outcome?.players || {})[0];
@@ -144,47 +144,68 @@ function getPrice(outcome) {
   }
   return null;
 }
-
+ 
 function getLine(outcome) {
   const player = Object.values(outcome?.players || {})[0];
   return player?.handicap ?? player?.line ?? player?.spread ?? null;
 }
-
+ 
 async function run() {
+  // ── Delete stale match documents from old APIs ──
+  console.log('Cleaning up old match documents...');
+  const existingSnap = await db.collection('matches').get();
+  const toDelete = existingSnap.docs.filter(d => !d.id.startsWith('id'));
+  if (toDelete.length > 0) {
+    const deleteBatch = db.batch();
+    toDelete.forEach(d => deleteBatch.delete(d.ref));
+    await deleteBatch.commit();
+    console.log(`Deleted ${toDelete.length} old match documents`);
+  } else {
+    console.log('No old documents to clean up');
+  }
+ 
   const url = `${BASE}/odds-by-tournaments?tournamentIds=${WC_TOURNAMENT_ID}&bookmaker=${BOOKMAKER}&marketIds=101,106,18&oddsFormat=american&apiKey=${API_KEY}`;
   console.log('Fetching World Cup odds from OddsPapi (1 request)...');
-
+ 
   const res = await fetch(url);
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`OddsPapi error ${res.status}: ${text.slice(0,300)}`);
   }
-
+ 
   const fixtures = await res.json();
   console.log(`Got ${fixtures.length} fixtures`);
-
+ 
+  // ── Delete all existing match documents before writing fresh ones ──
+  console.log('Cleaning up old match documents...');
+  const existingMatches = await db.collection('matches').get();
+  const deleteBatch = db.batch();
+  existingMatches.docs.forEach(d => deleteBatch.delete(d.ref));
+  await deleteBatch.commit();
+  console.log(`Deleted ${existingMatches.docs.length} old match documents`);
+ 
   let written = 0, skipped = 0, unknown = 0;
   const batch = db.batch();
-
+ 
   for (const fixture of fixtures) {
     const home = getTeamName(fixture.participant1Id);
     const away = getTeamName(fixture.participant2Id);
-
+ 
     if (!home || !away) {
       console.log(`Unknown team IDs: ${fixture.participant1Id} vs ${fixture.participant2Id}`);
       unknown++;
       continue;
     }
-
+ 
     const kickoffUTC = new Date(fixture.startTime).getTime();
     const ctLabel    = toCTLabel(fixture.startTime);
     const markets    = fixture.bookmakerOdds?.[BOOKMAKER]?.markets;
-
+ 
     if (!markets || Object.keys(markets).length === 0) {
       console.log(`No markets for: ${home} vs ${away}`);
       skipped++; continue;
     }
-
+ 
     // ── Market 101: 1X2 Moneyline (outcomes 101=home, 102=draw, 103=away) ──
     let moneyline = null;
     const m101 = markets['101'];
@@ -196,10 +217,10 @@ async function run() {
         moneyline = { home: homePrice, away: awayPrice, draw: drawPrice };
       }
     }
-
+ 
     if (!moneyline) { console.log(`No moneyline for: ${home} vs ${away}`); skipped++; continue; }
     console.log(`${home} vs ${away}: ML ${moneyline.home}/${moneyline.draw}/${moneyline.away}`);
-
+ 
     // ── Market 106: Over/Under (outcomes 106=over, 107=under) ──
     let total = null;
     const m106 = markets['106'];
@@ -212,7 +233,7 @@ async function run() {
         console.log(`  Total: O${total.line} ${overPrice}/${underPrice}`);
       }
     }
-
+ 
     // ── Market 18: Asian Handicap / Spread ──
     // Outcomes: first = home team line, second = away team line
     let spread = null;
@@ -232,7 +253,7 @@ async function run() {
         }
       }
     }
-
+ 
     // ── Derive TNB from moneyline ──
     let tnb;
     if (moneyline.draw) {
@@ -243,7 +264,7 @@ async function run() {
     } else {
       tnb = { home: moneyline.home, away: moneyline.away };
     }
-
+ 
     // ── Derive Double Chance from moneyline ──
     let dc;
     if (moneyline.draw) {
@@ -258,35 +279,36 @@ async function run() {
     } else {
       dc = { homeOrDraw: -300, awayOrDraw: -300, homeOrAway: -200 };
     }
-
+ 
     if (!total)  total  = { line: 2.5, over: -110, under: -110 };
     if (!spread) spread = { line: -0.5, awayLine: 0.5, homeFav: -110, awayDog: -110 };
-
-
+ 
+ 
     const matchDoc = {
       id: fixture.fixtureId,
       home, away, kickoffUTC, ctLabel,
       moneyline, tnb, total, spread, dc,
       updatedAt: new Date().toISOString(),
     };
-
+ 
     const ref = db.collection('matches').doc(fixture.fixtureId);
     batch.set(ref, matchDoc);
     written++;
   }
-
+ 
   const metaRef = db.collection('meta').doc('odds');
   batch.set(metaRef, {
     lastUpdated: new Date().toISOString(),
     matchCount: written,
     source: 'oddspapi',
   });
-
+ 
   await batch.commit();
   console.log(`\n✓ Wrote ${written} | Skipped ${skipped} | Unknown teams ${unknown}`);
 }
-
+ 
 run().catch(err => {
   console.error('fetch-odds failed:', err);
   process.exit(1);
 });
+ 
