@@ -240,7 +240,7 @@ function formatCT(ts) {
 }
 
 // ── State ──
-let db, currentPlayer = null, balances = {}, bets = [], betType = "Moneyline", scores = {}, oddsLastUpdated = null, oddsLoaded = false, softballGames = [], softballBalances = {};
+let db, currentPlayer = null, balances = {}, bets = [], betType = "Moneyline", scores = {}, oddsLastUpdated = null, oddsLoaded = false, softballGames = [], softballBalances = {}, sbFormActive = false;
 let selected = null, wagerVal = "", wagerError = "", activeTab = "wager", now = Date.now();
 let unsubBets = null, unsubBalances = null;
 let configMode = false;
@@ -389,6 +389,9 @@ setInterval(() => {
 
 // ── Render ──
 function render() {
+  // Don't re-render while user is typing in softball form
+  if (sbFormActive) return;
+
   // Save softball create form values before re-render
   const sbFormFields = ['sb-opponent','sb-date','sb-ml-home','sb-ml-away',
     'sb-spread-line','sb-spread-home','sb-spread-away',
@@ -1092,6 +1095,20 @@ function renderMain(app) {
   document.getElementById("inject-bets-btn")?.addEventListener("click", forceInjectBets);
 
   // ── Softball: Create Game ──
+  // Block renders while focus is anywhere inside the softball create form
+  const sbForm = document.querySelector(".softball-create-form");
+  if (sbForm) {
+    sbForm.addEventListener("focusin",  () => { sbFormActive = true; });
+    sbForm.addEventListener("focusout", e => {
+      // Only deactivate if focus moved outside the form entirely
+      setTimeout(() => {
+        if (!sbForm.contains(document.activeElement)) {
+          sbFormActive = false;
+        }
+      }, 50);
+    });
+  }
+
   document.getElementById("sb-create-btn")?.addEventListener("click", async () => {
     const opponent  = document.getElementById("sb-opponent")?.value.trim();
     const dateLabel = document.getElementById("sb-date")?.value.trim();
