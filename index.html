@@ -898,6 +898,7 @@ function renderMain(app) {
 
   // ── SOFTBALL ──
   if (activeTab === "softball") {
+    try {
     const myGameBets = bets.filter(b => b.betType && b.betType.startsWith('SB_') && b.player === currentPlayer);
     const sbBal = softballBalances[currentPlayer] ?? 0;
     const sbBalColor = sbBal >= 0 ? "#3B6D11" : "#A32D2D";
@@ -1029,10 +1030,14 @@ function renderMain(app) {
       }
       html += '</div>';
     });
+    } catch(e) {
+      html += '<div style="padding:20px;color:red;font-size:13px;"><strong>Softball render error:</strong><br>' + e.message + '<br>Line: ' + (e.stack||'').split('\n')[1] + '</div>';
+    }
   }
 
   // ── SOFTBALL LEADERBOARD ──
   if (activeTab === "sbleaderboard") {
+    try {
     // Build leaderboard sorted by softball balance
     const sbLeaderboard = [...PLAYERS].map((p, idx) => ({
       player: p, idx,
@@ -1085,6 +1090,11 @@ function renderMain(app) {
         </div>
       </div>`;
     });
+  }
+
+    } catch(e) {
+      html += '<div style="padding:20px;color:red;font-size:13px;"><strong>Standings render error:</strong><br>' + e.message + '</div>';
+    }
   }
 
   html += `</div>`;  // close whatever tab div — actually we didn't open one, so fine
