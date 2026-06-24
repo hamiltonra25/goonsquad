@@ -249,6 +249,13 @@ function formatCT(ts) {
 }
 
 // ── State ──
+const SB_FORM_FIELDS = ['sb-opponent','sb-date','sb-ml-home','sb-ml-away',
+  'sb-spread-line','sb-spread-home','sb-spread-away',
+  'sb-total-line','sb-total-over','sb-total-under',
+  'sb-ak-fdp-line','sb-ak-fdp-over','sb-ak-fdp-under',
+  'sb-r3-fdp-line','sb-r3-fdp-over','sb-r3-fdp-under',
+  'sb-ak-homer','sb-r3-homer',
+  'sb-prop-label','sb-prop-opt1-label','sb-prop-opt1-odds','sb-prop-opt2-label','sb-prop-opt2-odds'];
 let db, currentPlayer = null, balances = {}, bets = [], betType = "Moneyline", scores = {}, oddsLastUpdated = null, oddsLoaded = false, softballGames = [], softballBalances = {}, sbFormState = {};
 let selected = null, wagerVal = "", wagerError = "", activeTab = "wager", now = Date.now();
 let unsubBets = null, unsubBalances = null;
@@ -399,14 +406,7 @@ setInterval(() => {
 // ── Render ──
 function render() {
   // Save softball create form values before re-render
-  const sbFormFields = ['sb-opponent','sb-date','sb-ml-home','sb-ml-away',
-    'sb-spread-line','sb-spread-home','sb-spread-away',
-    'sb-total-line','sb-total-over','sb-total-under',
-    'sb-ak-fdp-line','sb-ak-fdp-over','sb-ak-fdp-under',
-    'sb-r3-fdp-line','sb-r3-fdp-over','sb-r3-fdp-under',
-    'sb-ak-homer','sb-r3-homer',
-    'sb-prop-label','sb-prop-opt1-label','sb-prop-opt1-odds','sb-prop-opt2-label','sb-prop-opt2-odds'];
-  sbFormFields.forEach(id => {
+  SB_FORM_FIELDS.forEach(id => {
     const el = document.getElementById(id);
     if (el && el.value) sbFormState[id] = el.value;
   });
@@ -1091,7 +1091,7 @@ function renderMain(app) {
   app.innerHTML = html;
 
   // Restore softball form values after re-render (always, from persistent state)
-  sbFormFields.forEach(id => {
+  SB_FORM_FIELDS.forEach(id => {
     const el = document.getElementById(id);
     if (el && sbFormState[id]) el.value = sbFormState[id];
   });
