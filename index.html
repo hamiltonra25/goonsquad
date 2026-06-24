@@ -191,6 +191,15 @@
 <div id="toast"></div>
 
 <script type="module">
+window.onerror = function(msg, src, line, col, err) {
+  const app = document.getElementById("app");
+  if (app) app.innerHTML = '<div style="padding:20px;color:red;font-size:13px;"><strong>JS Error (line '+line+'):</strong><br>' + msg + '</div>';
+  return false;
+};
+window.addEventListener("unhandledrejection", e => {
+  const app = document.getElementById("app");
+  if (app) app.innerHTML += '<div style="padding:10px;color:red;font-size:12px;">Promise error: ' + e.reason + '</div>';
+});
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection, addDoc, updateDoc, deleteDoc, serverTimestamp, query, where } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
