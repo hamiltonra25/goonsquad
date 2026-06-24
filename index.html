@@ -898,7 +898,6 @@ function renderMain(app) {
 
   // ── SOFTBALL ──
   if (activeTab === "softball") {
-    try {
     const myGameBets = bets.filter(b => b.betType && b.betType.startsWith('SB_') && b.player === currentPlayer);
     const sbBal = softballBalances[currentPlayer] ?? 0;
     const sbBalColor = sbBal >= 0 ? "#3B6D11" : "#A32D2D";
@@ -959,9 +958,9 @@ function renderMain(app) {
       html += '<div style="text-align:center;color:#aaa;padding:3rem 0;font-size:14px;">⚾ No softball games yet.</div>';
     }
 
-    function fmtOdds(o) { return o > 0 ? '+'+o : ''+o; }
+    const fmtOdds = o => o > 0 ? '+'+o : ''+o;
 
-    function sbPill(gameId, key, label, odds, betType) {
+    const sbPill = (gameId, key, label, odds, betType) => {
       const alreadyBet = myGameBets.some(b => b.matchId === gameId && b.optionKey === key);
       const cls = alreadyBet ? ' selected' : '';
       return '<span class="softball-odds-pill' + cls + '" data-sbgame="' + gameId + '" data-sbkey="' + key + '" data-sbodds="' + odds + '" data-sblabel="' + label + '" data-sbtype="' + betType + '">' + label + ' ' + fmtOdds(odds) + '</span>';
@@ -1030,14 +1029,10 @@ function renderMain(app) {
       }
       html += '</div>';
     });
-    } catch(e) {
-      html += '<div style="padding:20px;color:red;font-size:13px;"><strong>Softball render error:</strong><br>' + e.message + '<br>Line: ' + (e.stack||'').split('\n')[1] + '</div>';
-    }
   }
 
   // ── SOFTBALL LEADERBOARD ──
   if (activeTab === "sbleaderboard") {
-    try {
     // Build leaderboard sorted by softball balance
     const sbLeaderboard = [...PLAYERS].map((p, idx) => ({
       player: p, idx,
@@ -1090,11 +1085,6 @@ function renderMain(app) {
         </div>
       </div>`;
     });
-  }
-
-    } catch(e) {
-      html += '<div style="padding:20px;color:red;font-size:13px;"><strong>Standings render error:</strong><br>' + e.message + '</div>';
-    }
   }
 
   html += `</div>`;  // close whatever tab div — actually we didn't open one, so fine
@@ -1294,11 +1284,11 @@ function renderMain(app) {
       const gameBets = bets.filter(b => b.matchId === gameId && b.status === "pending");
       if (gameBets.length === 0) { toast("No pending bets to settle.", "error"); return; }
 
-      function fdpCalc(s) {
+      const fdpCalc = s => {
         return (s.h1b*3) + (s.h2b*6) + (s.h3b*9) + (s.hr*12) +
                (s.rbi*3.5) + (s.r*3.2) + (s.bb*3) + (s.sb_*6) + (s.hbp*3);
       }
-      function statRow(prefix, label) {
+      const statRow = (prefix, label) => {
         const cats = ['1B','2B','3B','HR','RBI','R','BB','SB','HBP'];
         const keys = ['h1b','h2b','h3b','hr','rbi','r','bb','sb_','hbp'];
         return '<div style="margin-bottom:12px;"><div style="font-weight:600;font-size:12px;color:#555;margin-bottom:6px;">'+label+' Stats</div>' +
@@ -1507,14 +1497,14 @@ function renderMain(app) {
     const previewEl = document.getElementById(`preview-${m.id}`);
     if (!hsEl || !asEl || !previewEl) return;
 
-    function updatePreview() {
+    const updatePreview = () => {
       const hs = parseInt(hsEl.value, 10), as2 = parseInt(asEl.value, 10);
       if (isNaN(hs) || isNaN(as2)) { previewEl.innerHTML = ""; return; }
       const totalGoals = hs + as2, diff = hs - as2;
       const matchBets = bets.filter(b => b.matchId === m.id && b.status === "pending");
       if (matchBets.length === 0) { previewEl.innerHTML = ""; return; }
 
-      function resolveKey(optionKey, betType) {
+      const resolveKey = (optionKey, betType) => {
         if (betType === "Moneyline") {
           if (optionKey === "home_win") return diff > 0  ? "won" : "lost";
           if (optionKey === "draw")     return diff === 0 ? "won" : "lost";
