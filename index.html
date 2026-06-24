@@ -292,6 +292,23 @@ function initFirebase() {
 }
 
 // ── Subscribe to real-time data ──
+async function loadSoftballGames() {
+  try {
+    const snap = await getDocs(collection(db, 'softball_games'));
+    softballGames = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    softballGames.sort((a,b) => (b.createdAt||0) - (a.createdAt||0));
+  } catch(e) { softballGames = []; }
+  render();
+}
+
+async function loadSoftballBalances() {
+  try {
+    const snap = await getDocs(collection(db, 'softball_balances'));
+    softballBalances = {};
+    snap.docs.forEach(d => { softballBalances[d.id] = d.data().amount ?? 0; });
+  } catch(e) { softballBalances = {}; }
+}
+
 function subscribe() {
   if (unsubBets) unsubBets();
   if (unsubBalances) unsubBalances();
