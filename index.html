@@ -240,7 +240,7 @@ function formatCT(ts) {
 }
 
 // ── State ──
-let db, currentPlayer = null, balances = {}, bets = [], betType = "Moneyline", scores = {}, oddsLastUpdated = null, oddsLoaded = false, softballGames = [], softballBalances = {}, sbFormActive = false, sbFormState = {};
+let db, currentPlayer = null, balances = {}, bets = [], betType = "Moneyline", scores = {}, oddsLastUpdated = null, oddsLoaded = false, softballGames = [], softballBalances = {}, sbFormState = {};
 let selected = null, wagerVal = "", wagerError = "", activeTab = "wager", now = Date.now();
 let unsubBets = null, unsubBalances = null;
 let configMode = false;
@@ -629,11 +629,16 @@ function renderMain(app) {
     const todayUTC = new Date(now);
 
     function getSlotTime(s) {
-      const d = new Date(todayUTC);
-      d.setUTCHours(s.utcH, s.utcM, 0, 0);
-      // 7:30PM and 10:30PM CT are past midnight UTC, add a day if we've passed them
-      if (s.utcH < 6 && todayUTC.getUTCHours() > 12) d.setUTCDate(d.getUTCDate() + 1);
-      return d.getTime();
+      try {
+        const d = new Date(todayUTC);
+        d.setUTCHours(s.utcH, s.utcM, 0, 0);
+        // Slots at utcH 0 or 3 (7:30PM and 10:30PM CT) cross midnight UTC
+        // If current UTC hour is past noon and slot is in early UTC hours, it's "today" evening CT
+        if (s.utcH < 6 && todayUTC.getUTCHours() >= 6) {
+          d.setUTCDate(d.getUTCDate() + 1);
+        }
+        return d.getTime();
+      } catch(e) { return 0; }
     }
 
     html += '<div class="odds-status-bar">';
@@ -1146,20 +1151,6 @@ function renderMain(app) {
   document.getElementById("inject-bets-btn")?.addEventListener("click", forceInjectBets);
 
   // ── Softball: Create Game ──
-  // Block renders while focus is anywhere inside the softball create form
-  const sbForm = document.querySelector(".softball-create-form");
-  if (sbForm) {
-    sbForm.addEventListener("focusin",  () => { sbFormActive = true; });
-    sbForm.addEventListener("focusout", e => {
-      // Only deactivate if focus moved outside the form entirely
-      setTimeout(() => {
-        if (!sbForm.contains(document.activeElement)) {
-          sbFormActive = false;
-        }
-      }, 50);
-    });
-  }
-
   document.getElementById("sb-create-btn")?.addEventListener("click", async () => {
     const opponent  = document.getElementById("sb-opponent")?.value.trim();
     const sbDateRaw = document.getElementById("sb-date")?.value;
