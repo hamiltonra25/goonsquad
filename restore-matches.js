@@ -43,9 +43,9 @@ const matches = [
 ];
 
 for (const match of matches) {
-  const { id, ...data } = match;
-  await db.collection('matches').doc(id).set(data);
-  console.log(`✓ Restored: ${data.home} vs ${data.away} (${id})`);
+  // Include id INSIDE the document data — app uses d.data().id to match bets
+  await db.collection('matches').doc(match.id).set(match);
+  console.log(`✓ Restored: ${match.home} vs ${match.away} (${match.id})`);
 }
 
 console.log('Done — both match documents restored.');
