@@ -601,18 +601,16 @@ function renderMain(app) {
     const lastUpd = oddsLastUpdated ? new Date(oddsLastUpdated).getTime() : null;
     const todayUTC = new Date(now);
 
-    function getSlotTime(s) {
+    const getSlotTime = s => {
       try {
         const d = new Date(todayUTC);
         d.setUTCHours(s.utcH, s.utcM, 0, 0);
-        // Slots at utcH 0 or 3 (7:30PM and 10:30PM CT) cross midnight UTC
-        // If current UTC hour is past noon and slot is in early UTC hours, it's "today" evening CT
         if (s.utcH < 6 && todayUTC.getUTCHours() >= 6) {
           d.setUTCDate(d.getUTCDate() + 1);
         }
         return d.getTime();
       } catch(e) { return 0; }
-    }
+    };
 
     html += '<div class="odds-status-bar">';
     html += '<div class="odds-status-title">Odds Updates — Pinnacle</div>';
@@ -1093,6 +1091,85 @@ async function forceInjectBets() {
     count++;
   }
   toast("✓ " + count + " bets injected successfully", "success");
+}
+
+async function deleteBet(betId) {
+  const bet = bets.find(b => b.id === betId);
+  if (!bet) return;
+  const bal = balances[bet.player] ?? INITIAL_SHARES;
+  await updateDoc(doc(db, "bets", betId), { status: "deleted" });
+  await setDoc(doc(db, "balances", bet.player), { amount: bal + bet.wager });
+  toast("Bet deleted and shares refunded.", "success");
+}
+
+async function settleMatchByScore(matchId, homeScore, awayScore) {
+  const match = MATCHES.find(m => m.id === matchId);
+  if (!match) return;
+  const hs  = parseInt(homeScore, 10);
+  const as2 = parseInt(awayScore, 10);
+  if (isNaN(hs) || isNaN(as2)) { toast("Invalid scores.", "error"); return; }
+
+  const matchBets = bets.filter(b => b.matchId === matchId && b.status === "pending");
+  for (const bet of matchBets) {
+    const result = resolveKey(bet.optionKey, bet.betType, hs, as2, match);
+    await updateDoc(doc(db, "bets", bet.id), { status: result });
+    const bal = balances[bet.player] ?? INITIAL_SHARES;
+    if (result === "won") {
+      await setDoc(doc(db, "balances", bet.player), { amount: bal + bet.wager + bet.toWin });
+    } else if (result === "push") {
+      await setDoc(doc(db, "balances", bet.player), { amount: bal + bet.wager });
+    }
+  }
+  await setDoc(doc(db, "scores", matchId), { homeScore: hs, awayScore: as2, settledAt: new Date().toISOString() });
+  toast(`✓ Settled: ${match.home} ${hs}–${as2} ${match.away} (${matchBets.length} bets)`, "success");
+}
+
+function resolveKey(optionKey, betType, hs, as2, match) {
+  const diff       = hs - as2;
+  const totalGoals = hs + as2;
+  if (betType === "Moneyline") {
+    if (optionKey === "home_win") return diff > 0 ? "won" : "lost";
+    if (optionKey === "draw")     return diff === 0 ? "won" : "lost";
+    if (optionKey === "away_win") return diff < 0 ? "won" : "lost";
+  }
+  if (betType === "Tie No Bet") {
+    if (diff === 0) return "push";
+    if (optionKey === "tnb_home") return diff > 0 ? "won" : "lost";
+    if (optionKey === "tnb_away") return diff < 0 ? "won" : "lost";
+  }
+  if (betType === "Total Goals") {
+    const line = match?.total?.line ?? 2.5;
+    if (totalGoals === line) return "push";
+    if (optionKey === "over")  return totalGoals > line ? "won" : "lost";
+    if (optionKey === "under") return totalGoals < line ? "won" : "lost";
+  }
+  if (betType === "Double Chance") {
+    if (optionKey === "dc_1x") return diff >= 0 ? "won" : "lost";
+    if (optionKey === "dc_x2") return diff <= 0 ? "won" : "lost";
+    if (optionKey === "dc_12") return diff !== 0 ? "won" : "lost";
+  }
+  return "lost";
+}
+
+async function reverseAndResettle(matchId, newHomeScore, newAwayScore) {
+  const match = MATCHES.find(m => m.id === matchId);
+  if (!match) return;
+  const hs  = parseInt(newHomeScore, 10);
+  const as2 = parseInt(newAwayScore, 10);
+  if (isNaN(hs) || isNaN(as2)) { toast("Enter valid scores.", "error"); return; }
+
+  const matchBets = bets.filter(b => b.matchId === matchId && b.status !== "pending");
+  for (const bet of matchBets) {
+    const bal = balances[bet.player] ?? INITIAL_SHARES;
+    if (bet.status === "won") {
+      await setDoc(doc(db, "balances", bet.player), { amount: bal - bet.wager - bet.toWin });
+    } else if (bet.status === "push") {
+      await setDoc(doc(db, "balances", bet.player), { amount: bal - bet.wager });
+    }
+    await updateDoc(doc(db, "bets", bet.id), { status: "pending" });
+  }
+  await new Promise(r => setTimeout(r, 500));
+  await settleMatchByScore(matchId, hs, as2);
 }
 
 function renderBetCard(bet, canSettle) {
