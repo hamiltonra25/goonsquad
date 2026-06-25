@@ -768,9 +768,11 @@ function renderMain(app) {
     // Check if force-inject bets have already been added
     const injectedAlready = bets.some(b => b.player === "Brez" && b.wager === 1000 && b.betType === "Total Goals");
     html += `<div style="font-size:12px;color:#993C1D;font-weight:600;margin-bottom:8px;">Commissioner Mode · Enter final scores to auto-settle all bets</div>
-      <div style="margin-bottom:14px;display:flex;align-items:center;gap:12px;">
+      <div style="margin-bottom:14px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;">
         <button id="refresh-odds-btn" style="background:#185FA5;color:#fff;border:none;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:600;cursor:pointer;">🔄 Refresh Odds Now</button>
         <span id="refresh-odds-status" style="font-size:12px;color:#888;"></span>
+        <button id="refresh-scores-btn" style="background:#3B6D11;color:#fff;border:none;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:600;cursor:pointer;">⚽ Force Score Update</button>
+        <span id="refresh-scores-status" style="font-size:12px;color:#888;"></span>
       </div>`;
     if (!injectedAlready) {
       html += `<div style="background:#FFF8E6;border:1px solid #F0D080;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;">
@@ -949,6 +951,32 @@ function renderMain(app) {
     btn.textContent = "🔄 Refresh Odds Now";
   });
 
+  // Force Score Update button
+  document.getElementById("refresh-scores-btn")?.addEventListener("click", async () => {
+    const btn    = document.getElementById("refresh-scores-btn");
+    const status = document.getElementById("refresh-scores-status");
+    btn.disabled = true;
+    btn.textContent = "Updating...";
+    status.textContent = "";
+    try {
+      const tokenDoc = await getDoc(doc(db, "meta", "github"));
+      const ghToken  = tokenDoc?.data()?.workflowToken;
+      if (!ghToken) { status.textContent = "⚠ No token configured."; btn.disabled = false; btn.textContent = "⚽ Force Score Update"; return; }
+      const res = await fetch("https://api.github.com/repos/hamiltonra25/goonsquad/actions/workflows/settle-scores.yml/dispatches", {
+        method: "POST",
+        headers: { "Authorization": "Bearer " + ghToken, "Accept": "application/vnd.github+json", "Content-Type": "application/json" },
+        body: JSON.stringify({ ref: "main" }),
+      });
+      status.textContent = res.status === 204 ? "✓ Score update triggered — ~30 sec" : "✗ Error " + res.status;
+      status.style.color = res.status === 204 ? "#3B6D11" : "#A32D2D";
+    } catch(err) {
+      status.textContent = "✗ " + err.message;
+      status.style.color = "#A32D2D";
+    }
+    btn.disabled = false;
+    btn.textContent = "⚽ Force Score Update";
+  });
+
   // Edit score toggle buttons
   app.querySelectorAll(".edit-score-btn").forEach(btn => {
     btn.addEventListener("click", () => {
@@ -970,6 +998,7 @@ function renderMain(app) {
       }
     });
   });
+} // end renderMain
 
 // ── Commissioner: force-inject bets that were placed before the app was ready ──
 // Writes directly to Firebase without touching balances (balances already reflect these bets)
@@ -1102,7 +1131,6 @@ if (isConfigured()) {
   render();
 } else {
   render();
-}
 }
 </script>
 </body>
