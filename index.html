@@ -226,7 +226,7 @@ function formatCT(ts) {
 }
 
 // ── State ──
-let db, currentPlayer = null, balances = {}, bets = [], betType = "Moneyline", scores = {}, oddsLastUpdated = null, oddsLoaded = false;
+let db, currentPlayer = null, balances = {}, bets = [], betType = "Moneyline", scores = {}, oddsLastUpdated = null, oddsLoaded = false, scoresLastUpdated = null;
 let selected = null, wagerVal = "", wagerError = "", activeTab = "wager", now = Date.now();
 let unsubBets = null, unsubBalances = null;
 let configMode = false;
@@ -590,43 +590,47 @@ function renderMain(app) {
   // ── ODDS & BETS ──
   if (activeTab === "wager") {
     // ── Odds status table ──
-    const SCHEDULED_CT = [
-      { label: '8:00 AM',   utcH: 13, utcM: 0  },
-      { label: '11:00 AM',  utcH: 16, utcM: 0  },
-      { label: '1:30 PM',   utcH: 18, utcM: 30 },
-      { label: '4:30 PM',   utcH: 21, utcM: 30 },
-      { label: '7:30 PM',   utcH: 0,  utcM: 30 },
-      { label: '10:30 PM',  utcH: 3,  utcM: 30 },
-    ];
-    const lastUpd = oddsLastUpdated ? new Date(oddsLastUpdated).getTime() : null;
-    const todayUTC = new Date(now);
+    // ── Odds status bar ──
+    const SCHEDULED_HOURS_CT = [8, 10, 12, 14, 16, 18, 20]; // CT hours
+    const lastUpd = oddsLastUpdated ? new Date(oddsLastUpdated) : null;
 
-    const getSlotTime = s => {
-      try {
-        const d = new Date(todayUTC);
-        d.setUTCHours(s.utcH, s.utcM, 0, 0);
-        if (s.utcH < 6 && todayUTC.getUTCHours() >= 6) {
-          d.setUTCDate(d.getUTCDate() + 1);
-        }
-        return d.getTime();
-      } catch(e) { return 0; }
-    };
+    // Get CT hour of last update
+    const lastUpdCTHour = lastUpd ? parseInt(lastUpd.toLocaleString('en-US', {
+      timeZone: 'America/Chicago', hour: 'numeric', hour12: false
+    })) : null;
+    const lastUpdDate = lastUpd ? lastUpd.toLocaleDateString('en-US', { timeZone: 'America/Chicago' }) : null;
+    const todayDate = new Date(now).toLocaleDateString('en-US', { timeZone: 'America/Chicago' });
+    const nowCTHour = parseInt(new Date(now).toLocaleString('en-US', {
+      timeZone: 'America/Chicago', hour: 'numeric', hour12: false
+    }));
 
     html += '<div class="odds-status-bar">';
-    html += '<div class="odds-status-title">Odds Updates — Pinnacle</div>';
+    html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">';
+    html += '<div class="odds-status-title" style="margin-bottom:0;">Odds — Pinnacle</div>';
+    if (lastUpd) {
+      html += '<div style="font-size:10px;color:#888;">Updated ' + lastUpd.toLocaleTimeString('en-US',{timeZone:'America/Chicago',hour:'numeric',minute:'2-digit',hour12:true}) + ' CT</div>';
+    }
+    html += '</div>';
     html += '<div class="odds-status-grid">';
-    SCHEDULED_CT.forEach(slot => {
-      const slotMs = getSlotTime(slot);
-      const isPast = now >= slotMs;
-      // Hit if lastUpdated is within 90 min of this slot
-      const isHit  = lastUpd && Math.abs(lastUpd - slotMs) < 90 * 60 * 1000;
-      let cls, icon, lbl;
-      if (!isPast)      { cls = 'pending'; icon = '🟡'; lbl = 'Upcoming'; }
-      else if (isHit)   { cls = 'hit';     icon = '✓';  lbl = 'Pinnacle'; }
-      else              { cls = 'missed';  icon = '✗';  lbl = 'Missed';   }
-      html += '<span class="odds-slot ' + cls + '">' + icon + ' ' + slot.label + ' — ' + lbl + '</span>';
+    SCHEDULED_HOURS_CT.forEach(hr => {
+      const label = hr === 0 ? '12AM' : hr < 12 ? hr+'AM' : hr === 12 ? '12PM' : (hr-12)+'PM';
+      const isPast = nowCTHour > hr || (nowCTHour === hr && new Date(now).getMinutes() >= 5);
+      const isHit  = lastUpd && lastUpdDate === todayDate && lastUpdCTHour !== null &&
+                     Math.abs(lastUpdCTHour - hr) <= 1;
+      let icon, style;
+      if (!isPast)     { icon = '—';  style = 'color:#bbb;'; }
+      else if (isHit)  { icon = '✓';  style = 'color:#3B6D11;font-weight:700;'; }
+      else             { icon = '✗';  style = 'color:#A32D2D;'; }
+      html += '<span style="font-size:11px;' + style + 'white-space:nowrap;">' + icon + ' ' + label + '</span>';
     });
-    html += '</div></div>';
+    html += '</div>';
+
+    // Scores last updated
+    if (scoresLastUpdated) {
+      const scUpd = new Date(scoresLastUpdated);
+      html += '<div style="font-size:10px;color:#888;margin-top:4px;">⚽ Scores checked ' + scUpd.toLocaleTimeString('en-US',{timeZone:'America/Chicago',hour:'numeric',minute:'2-digit',hour12:true}) + ' CT · Bets settle on full-time only</div>';
+    }
+    html += '</div>';
 
     if (MATCHES.length === 0) {
       html += `<div style="text-align:center;color:#aaa;padding:3rem 0;font-size:14px;">
