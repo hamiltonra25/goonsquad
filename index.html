@@ -585,6 +585,7 @@ function renderMain(app) {
       <button class="tab-btn ${activeTab==="all"?"active":""}" data-tab="all">All Bets</button>
       <button class="tab-btn ${activeTab==="leaderboard"?"active":""}" data-tab="leaderboard">Leaderboard</button>
       ${currentPlayer === "R3" ? `<button class="tab-btn ${activeTab==="commissioner"?"active":""}" data-tab="commissioner" style="color:#993C1D;">Commissioner</button>` : ""}
+      <button class="tab-btn ${activeTab==="audit"?"active":""}" data-tab="audit">📋 Audit</button>
     </div>`;
 
   // ── ODDS & BETS ──
@@ -865,6 +866,81 @@ function renderMain(app) {
 
   }
 
+
+  // ── AUDIT TAB ──
+  if (activeTab === "audit") {
+    const INITIAL = 3500;
+    const settled = bets.filter(b => ['won','lost','push'].includes(b.status) && !b.isSoftball);
+
+    html += '<div style="font-size:11px;color:#888;margin-bottom:10px;">All settled bets in chronological order. Balances calculated from bet history starting at 3,500 shares each.</div>';
+
+    for (const player of PLAYERS) {
+      const playerBets = settled
+        .filter(b => b.player === player)
+        .sort((a,b) => {
+          const ta = a.createdAt?.toMillis ? a.createdAt.toMillis() : (a.createdAt?.seconds ? a.createdAt.seconds*1000 : 0);
+          const tb = b.createdAt?.toMillis ? b.createdAt.toMillis() : (b.createdAt?.seconds ? b.createdAt.seconds*1000 : 0);
+          return ta - tb;
+        });
+
+      let running = INITIAL;
+      const pi = PLAYERS.indexOf(player);
+
+      html += '<div style="margin-bottom:20px;">';
+      html += '<div style="font-weight:700;font-size:13px;color:' + PLAYER_COLORS[pi] + ';margin-bottom:6px;border-bottom:2px solid ' + PLAYER_COLORS[pi] + ';padding-bottom:4px;">' + player + ' — ' + playerBets.length + ' settled bets</div>';
+      html += '<div style="overflow-x:auto;">';
+      html += '<table style="width:100%;border-collapse:collapse;font-size:11px;">';
+      html += '<thead><tr style="background:#f5f5f5;color:#666;">' +
+        '<th style="text-align:left;padding:4px 6px;">Date</th>' +
+        '<th style="text-align:left;padding:4px 6px;">Match</th>' +
+        '<th style="text-align:left;padding:4px 6px;">Bet</th>' +
+        '<th style="text-align:left;padding:4px 6px;">Pick</th>' +
+        '<th style="text-align:right;padding:4px 6px;">Wager</th>' +
+        '<th style="text-align:right;padding:4px 6px;">To Win</th>' +
+        '<th style="text-align:center;padding:4px 6px;">Result</th>' +
+        '<th style="text-align:right;padding:4px 6px;">+/−</th>' +
+        '<th style="text-align:right;padding:4px 6px;">Balance</th>' +
+        '</tr></thead><tbody>';
+
+      for (const bet of playerBets) {
+        const ts = bet.createdAt?.toDate ? bet.createdAt.toDate().toLocaleString('en-US',{
+          timeZone:'America/Chicago', month:'2-digit', day:'2-digit',
+          hour:'2-digit', minute:'2-digit', hour12:true
+        }) : '';
+
+        let change = 0;
+        let resColor = '#888';
+        let resLabel = bet.status;
+        if (bet.status === 'won')  { change = bet.toWin;   resColor = '#3B6D11'; resLabel = '✓ Won';  }
+        if (bet.status === 'lost') { change = -bet.wager;  resColor = '#A32D2D'; resLabel = '✗ Lost'; }
+        if (bet.status === 'push') { change = 0;           resColor = '#C86A00'; resLabel = '~ Push'; }
+        running += change;
+
+        const changeStr = (change > 0 ? '+' : '') + change;
+        const rowBg = bet.status === 'won' ? '#f6fcf0' : bet.status === 'lost' ? '#fdf0f0' : '#fffbf0';
+
+        html += '<tr style="background:' + rowBg + ';border-bottom:1px solid #eee;">' +
+          '<td style="padding:4px 6px;white-space:nowrap;color:#888;">' + ts + '</td>' +
+          '<td style="padding:4px 6px;">' + (bet.matchLabel||'').slice(0,22) + '</td>' +
+          '<td style="padding:4px 6px;">' + (bet.betType||'').slice(0,12) + '</td>' +
+          '<td style="padding:4px 6px;">' + (bet.optionLabel||'').slice(0,14) + '</td>' +
+          '<td style="padding:4px 6px;text-align:right;">' + bet.wager + '</td>' +
+          '<td style="padding:4px 6px;text-align:right;">' + bet.toWin + '</td>' +
+          '<td style="padding:4px 6px;text-align:center;color:' + resColor + ';font-weight:600;">' + resLabel + '</td>' +
+          '<td style="padding:4px 6px;text-align:right;color:' + resColor + ';font-weight:600;">' + changeStr + '</td>' +
+          '<td style="padding:4px 6px;text-align:right;font-weight:700;">' + running + '</td>' +
+          '</tr>';
+      }
+
+      html += '<tr style="background:#f5f5f5;font-weight:700;">' +
+        '<td colspan="7" style="padding:6px;text-align:right;">Final Balance</td>' +
+        '<td style="padding:6px;text-align:right;color:' + (running >= INITIAL ? '#3B6D11':'#A32D2D') + ';">' + (running > INITIAL ? '+':'') + (running - INITIAL) + '</td>' +
+        '<td style="padding:6px;text-align:right;font-size:13px;">' + running + '</td>' +
+        '</tr>';
+
+      html += '</tbody></table></div></div>';
+    }
+  }
 
   html += `</div>`;  // close whatever tab div — actually we didn't open one, so fine
   app.innerHTML = html;
