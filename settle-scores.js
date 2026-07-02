@@ -195,6 +195,12 @@ async function run() {
   }
 
   console.log(`\nDone. Bets settled this run: ${totalSettled}`);
+
+  // Write last-checked timestamp to Firebase so app can display it
+  await db.collection('meta').doc('scores').set({
+    lastUpdated: new Date().toISOString(),
+    settledThisRun: totalSettled,
+  }, { merge: true });
 }
 
 run().catch(err => {
