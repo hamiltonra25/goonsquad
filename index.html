@@ -615,8 +615,9 @@ function renderMain(app) {
     SCHEDULED_HOURS_CT.forEach(hr => {
       const label = hr === 0 ? '12AM' : hr < 12 ? hr+'AM' : hr === 12 ? '12PM' : (hr-12)+'PM';
       const isPast = nowCTHour > hr || (nowCTHour === hr && new Date(now).getMinutes() >= 5);
-      const isHit  = lastUpd && lastUpdDate === todayDate && lastUpdCTHour !== null &&
-                     Math.abs(lastUpdCTHour - hr) <= 1;
+      // A slot is "hit" if odds were updated today at ANY point after this slot time
+      // (one update covers all prior slots that day)
+      const isHit  = lastUpd && lastUpdDate === todayDate && lastUpdCTHour !== null && lastUpdCTHour >= hr;
       let icon, style;
       if (!isPast)     { icon = '—';  style = 'color:#bbb;'; }
       else if (isHit)  { icon = '✓';  style = 'color:#3B6D11;font-weight:700;'; }
@@ -666,7 +667,7 @@ function renderMain(app) {
         <div class="match-row${locked?" locked":""}${isSel?" selected":""}" data-match="${m.id}">
           <div class="match-info">
             <div class="match-name">${m.home} vs ${m.away}</div>
-            <div class="match-meta">${m.ctLabel}<br>${m.venue} · ${m.tv}</div>
+            <div class="match-meta">${m.ctLabel}</div>
             ${lockHtml}
           </div>
           <div class="odds-pills">
@@ -789,7 +790,7 @@ function renderMain(app) {
       const pendingCount = bets.filter(b => b.matchId === m.id && b.status === "pending").length;
       html += `<div class="comm-match${hasScore?" settled":""}">
         <div class="comm-match-title">${m.home} vs ${m.away}</div>
-        <div class="comm-match-meta">${m.ctLabel} · ${m.group} · ${pendingCount} pending bet${pendingCount!==1?"s":""}</div>`;
+        <div class="comm-match-meta">${m.ctLabel} · ${pendingCount} pending bet${pendingCount!==1?"s":""}</div>`;
       if (hasScore) {
         html += `<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
           <div class="comm-settled-score">${m.home} ${saved.homeScore}–${saved.awayScore} ${m.away} &nbsp;<span style="font-size:11px;font-weight:400;color:#3B6D11;">✓ Settled</span></div>
