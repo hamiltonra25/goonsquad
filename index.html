@@ -984,7 +984,43 @@ function renderMain(app) {
     });
   });
 
-  // Re-settle with corrected score
+  // ── Settle button (first-time score entry) ──
+  MATCHES.forEach(m => {
+    const settleBtn = document.getElementById("settle-" + m.id);
+    if (!settleBtn) return;
+
+    // Live preview
+    const hsEl = document.getElementById("hs-" + m.id);
+    const asEl = document.getElementById("as-" + m.id);
+    const previewEl = document.getElementById("preview-" + m.id);
+
+    const updatePreview = () => {
+      if (!previewEl) return;
+      const hs  = parseInt(hsEl?.value, 10);
+      const as2 = parseInt(asEl?.value, 10);
+      if (isNaN(hs) || isNaN(as2)) { previewEl.innerHTML = ""; return; }
+      const matchBets = bets.filter(b => b.matchId === m.id && b.status === "pending");
+      if (matchBets.length === 0) { previewEl.innerHTML = ""; return; }
+      const lines = matchBets.map(b => {
+        const res = resolveKey(b.optionKey, b.betType, hs, as2, m);
+        const col = res === "won" ? "#3B6D11" : res === "push" ? "#C86A00" : "#A32D2D";
+        return `<span style="color:${col};font-size:11px;">${b.player} ${b.optionLabel} → ${res}</span>`;
+      });
+      previewEl.innerHTML = lines.join(" &nbsp;|&nbsp; ");
+    };
+
+    hsEl?.addEventListener("input", updatePreview);
+    asEl?.addEventListener("input", updatePreview);
+
+    settleBtn.addEventListener("click", () => {
+      const hs  = document.getElementById("hs-" + m.id)?.value;
+      const as2 = document.getElementById("as-" + m.id)?.value;
+      if (hs === "" || as2 === "") { toast("Enter both scores first.", "error"); return; }
+      settleMatchByScore(m.id, hs, as2);
+    });
+  });
+
+  // ── Re-settle with corrected score ──
   MATCHES.forEach(m => {
     const btn = document.getElementById("re-settle-" + m.id);
     if (!btn) return;
@@ -994,6 +1030,15 @@ function renderMain(app) {
       if (confirm("Reverse all payouts for " + m.home + " vs " + m.away + " and re-settle " + m.home + " " + hs + "–" + as2 + " " + m.away + "?")) {
         reverseAndResettle(m.id, hs, as2);
       }
+    });
+  });
+
+  // ── Edit score toggle ──
+  app.querySelectorAll(".edit-score-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const formId = "edit-form-" + btn.dataset.match;
+      const form = document.getElementById(formId);
+      if (form) form.style.display = form.style.display === "none" ? "block" : "none";
     });
   });
 } // end renderMain
