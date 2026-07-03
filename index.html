@@ -216,7 +216,13 @@ function countdown(m, now) {
 function getOdds(m, bt) {
   if(bt==="Moneyline") return [{key:"home_win",label:m.home,odds:m.moneyline.home},{key:"draw",label:"Draw",odds:m.moneyline.draw},{key:"away_win",label:m.away,odds:m.moneyline.away}];
   if(bt==="Tie No Bet") return [{key:"tnb_home",label:m.home,odds:m.tnb.home},{key:"tnb_away",label:m.away,odds:m.tnb.away}];
-  if(bt==="Total Goals") return [{key:"over",label:`O ${m.total.line}`,odds:m.total.over},{key:"under",label:`U ${m.total.line}`,odds:m.total.under}];
+  if(bt==="Total Goals") {
+    try {
+      if (!m.total || !m.total.line || !m.total.over || !m.total.under) return [];
+      if (m.total.over === -110 && m.total.under === -110 && m.total.line === 2.5) return [];
+      return [{key:"over",label:`O ${m.total.line}`,odds:m.total.over},{key:"under",label:`U ${m.total.line}`,odds:m.total.under}];
+    } catch(e) { return []; }
+  }
 
   if(bt==="Double Chance") return [{key:"dc_1x",label:`${m.home}/Draw`,odds:m.dc.homeOrDraw},{key:"dc_x2",label:`${m.away}/Draw`,odds:m.dc.awayOrDraw},{key:"dc_12",label:`${m.home}/${m.away}`,odds:m.dc.homeOrAway}];
   return [];
@@ -639,6 +645,11 @@ function renderMain(app) {
         Loading odds… check back in a moment.
       </div>`;
     }
+
+    // Show message if Total Goals tab has no matches with real odds
+    if (betType === "Total Goals" && MATCHES.filter(m => { try { return m.total && m.total.line && m.total.over && m.total.under && !(m.total.over === -110 && m.total.under === -110 && m.total.line === 2.5); } catch(e) { return false; } }).length === 0) {
+      html += '<div style="text-align:center;color:#aaa;padding:2rem 1rem;font-size:13px;">⏳ Total goals odds not yet available.<br><span style="font-size:11px;">Pinnacle typically opens these markets closer to kickoff.</span></div>';
+    }
     html += `<div class="bet-type-row">`;
     BET_TYPES.forEach(bt => {
       html += `<button class="bt-pill ${betType===bt?"active":""}" data-bt="${bt}">${bt}</button>`;
@@ -649,6 +660,7 @@ function renderMain(app) {
     MATCHES.filter(m => !isLocked(m, now)).forEach(m => {
       const locked = isLocked(m, now);
       const opts   = getOdds(m, betType);
+      if (opts.length === 0 && betType === "Total Goals") return; // skip matches with no total data
       const cd     = countdown(m, now);
       const isSel  = selected && selected.matchId === m.id;
       let lockHtml = "";
