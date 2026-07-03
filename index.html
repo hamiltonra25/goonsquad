@@ -975,7 +975,10 @@ function renderMain(app) {
   app.querySelectorAll(".bt-pill").forEach(btn => {
     btn.addEventListener("click", () => {
       betType = btn.dataset.bt; selected = null; wagerVal = ""; wagerError = "";
-      render();
+      try { render(); } catch(e) {
+        console.error("render error on betType change:", e);
+        document.getElementById("app").innerHTML = '<div style="padding:20px;color:red;">Error: ' + e.message + '</div>';
+      }
     });
   });
 
