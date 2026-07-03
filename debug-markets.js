@@ -14,8 +14,8 @@ initializeApp({ credential: cert({
 const API_KEY = process.env.ODDSPAPI_KEY;
 const BASE    = 'https://api.oddspapi.io/v4';
 
-// Fetch WITHOUT marketIds filter so we get everything Pinnacle has
-const url = `${BASE}/odds-by-tournaments?tournamentIds=16&bookmaker=pinnacle&oddsFormat=american&apiKey=${API_KEY}`;
+// Fetch with specific markets we think are totals
+const url = `${BASE}/odds-by-tournaments?tournamentIds=16&bookmaker=pinnacle&marketIds=104,108,1010,1012&oddsFormat=american&apiKey=${API_KEY}`;
 console.log('Fetching ALL markets from Pinnacle (no filter)...\n');
 
 const res = await fetch(url);
@@ -31,11 +31,13 @@ for (const f of fixtures.slice(0, 3)) { // show first 3 fixtures
   
   for (const [mId, market] of Object.entries(markets)) {
     const outcomes = Object.entries(market.outcomes || {});
-    const sample = outcomes[0];
-    const player = sample ? Object.values(sample[1].players || {})[0] : null;
-    const line = player?.handicap ?? player?.line ?? '';
-    const price = player?.priceAmerican ?? '';
-    console.log(`  Market ${mId}: ${outcomes.length} outcomes | sample line:${line} price:${price}`);
+    console.log(`  Market ${mId}: ${outcomes.length} outcomes`);
+    for (const [oid, outcome] of outcomes) {
+      const player = Object.values(outcome.players || {})[0];
+      if (player) {
+        console.log(`    Outcome ${oid}: line=${player.handicap ?? player.line ?? 'n/a'} price=${player.priceAmerican} bookmakerOutcomeId=${player.bookmakerOutcomeId}`);
+      }
+    }
   }
   console.log();
 }
