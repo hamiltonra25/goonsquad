@@ -155,16 +155,42 @@ async function run() {
   // Matches stay in Firebase permanently even after games finish.
   // fetch-odds only adds new matches and updates odds on existing ones.
 
-  const url = `${BASE}/odds-by-tournaments?tournamentIds=${WC_TOURNAMENT_ID}&bookmaker=${BOOKMAKER}&marketIds=101,106,18&oddsFormat=american&apiKey=${API_KEY}`;
-  console.log('Fetching World Cup odds from OddsPapi (1 request)...');
+  // Fetch Pinnacle for moneyline + DraftKings for totals (DK posts totals earlier)
+  const urlPinnacle = `${BASE}/odds-by-tournaments?tournamentIds=${WC_TOURNAMENT_ID}&bookmaker=pinnacle&marketIds=101,18&oddsFormat=american&apiKey=${API_KEY}`;
+  const urlDK       = `${BASE}/odds-by-tournaments?tournamentIds=${WC_TOURNAMENT_ID}&bookmaker=draftkings&marketIds=106&oddsFormat=american&apiKey=${API_KEY}`;
+  console.log('Fetching World Cup odds from OddsPapi (2 requests)...');
 
-  const res = await fetch(url);
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`OddsPapi error ${res.status}: ${text.slice(0,300)}`);
+  const [resPinnacle, resDK] = await Promise.all([
+    fetch(urlPinnacle),
+    fetch(urlDK),
+  ]);
+
+  if (!resPinnacle.ok) {
+    const text = await resPinnacle.text();
+    throw new Error(`OddsPapi Pinnacle error ${resPinnacle.status}: ${text.slice(0,300)}`);
+  }
+  if (!resDK.ok) {
+    const text = await resDK.text();
+    throw new Error(`OddsPapi DK error ${resDK.status}: ${text.slice(0,300)}`);
   }
 
-  const fixtures = await res.json();
+  const fixtures    = await resPinnacle.json();
+  const dkFixtures  = await resDK.json();
+
+  // Build DK totals lookup by fixtureId
+  const dkTotalsMap = {};
+  for (const f of dkFixtures) {
+    const m106 = f.bookmakerOdds?.draftkings?.markets?.['106'];
+    if (m106?.outcomes) {
+      const overPrice  = getPrice(m106.outcomes['106']);
+      const underPrice = getPrice(m106.outcomes['107']);
+      const line       = getLine(m106.outcomes['106']);
+      if (overPrice && underPrice && line != null) {
+        dkTotalsMap[f.fixtureId] = { line: Math.abs(line), over: overPrice, under: underPrice };
+      }
+    }
+  }
+  console.log(`Got ${fixtures.length} Pinnacle fixtures, ${Object.keys(dkTotalsMap).length} DK totals`);
   console.log(`Got ${fixtures.length} fixtures`);
 
   // IMPORTANT: Never delete match documents — existing bets reference these IDs.
@@ -206,17 +232,25 @@ async function run() {
     if (!moneyline) { console.log(`No moneyline for: ${home} vs ${away}`); skipped++; continue; }
     console.log(`${home} vs ${away}: ML ${moneyline.home}/${moneyline.draw}/${moneyline.away}`);
 
-    // ── Market 106: Over/Under (outcomes 106=over, 107=under) ──
+    // ── Market 106: Over/Under — try Pinnacle first, fall back to DraftKings ──
     let total = null;
     const m106 = markets['106'];
     if (m106?.outcomes) {
       const overPrice  = getPrice(m106.outcomes['106']);
       const underPrice = getPrice(m106.outcomes['107']);
-      const line       = getLine(m106.outcomes['106']) ?? 2.5;
-      if (overPrice && underPrice) {
+      const line       = getLine(m106.outcomes['106']);
+      if (overPrice && underPrice && line != null) {
         total = { line: Math.abs(line), over: overPrice, under: underPrice };
-        console.log(`  Total: O${total.line} ${overPrice}/${underPrice}`);
+        console.log(`  Total (Pinnacle): O${total.line} ${overPrice}/${underPrice}`);
       }
+    }
+    // Fall back to DraftKings totals if Pinnacle doesn't have it
+    if (!total && dkTotalsMap[fixture.fixtureId]) {
+      total = dkTotalsMap[fixture.fixtureId];
+      console.log(`  Total (DraftKings): O${total.line} ${total.over}/${total.under}`);
+    }
+    if (!total) {
+      console.log(`  No total goals data for: ${home} vs ${away}`);
     }
 
     // ── Market 18: Asian Handicap / Spread ──
@@ -265,8 +299,10 @@ async function run() {
       dc = { homeOrDraw: -300, awayOrDraw: -300, homeOrAway: -200 };
     }
 
-    if (!total)  total  = { line: 2.5, over: -110, under: -110 };
     if (!spread) spread = { line: -0.5, awayLine: 0.5, homeFav: -110, awayDog: -110 };
+    if (!total) {
+      console.log(`  No total goals data for: ${home} vs ${away} — skipping total`);
+    }
 
 
     const matchDoc = {
