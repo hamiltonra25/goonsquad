@@ -156,41 +156,17 @@ async function run() {
   // fetch-odds only adds new matches and updates odds on existing ones.
 
   // Fetch Pinnacle for moneyline + DraftKings for totals (DK posts totals earlier)
-  const urlPinnacle = `${BASE}/odds-by-tournaments?tournamentIds=${WC_TOURNAMENT_ID}&bookmaker=pinnacle&marketIds=101,18&oddsFormat=american&apiKey=${API_KEY}`;
-  const urlDK       = `${BASE}/odds-by-tournaments?tournamentIds=${WC_TOURNAMENT_ID}&bookmaker=draftkings&marketIds=106&oddsFormat=american&apiKey=${API_KEY}`;
+  // Markets: 101=1X2, 18=Asian Handicap, 1010=O/U 2.5, 10258=O/U 1.5, 10168=O/U 2.0, 10172=O/U 2.75, 1012=O/U 3.5
+  const urlPinnacle = `${BASE}/odds-by-tournaments?tournamentIds=${WC_TOURNAMENT_ID}&bookmaker=pinnacle&marketIds=101,18,1010,10258,10168,10172,1012&oddsFormat=american&apiKey=${API_KEY}`;
   console.log('Fetching World Cup odds from OddsPapi (2 requests)...');
 
-  const [resPinnacle, resDK] = await Promise.all([
-    fetch(urlPinnacle),
-    fetch(urlDK),
-  ]);
-
+  const resPinnacle = await fetch(urlPinnacle);
   if (!resPinnacle.ok) {
     const text = await resPinnacle.text();
     throw new Error(`OddsPapi Pinnacle error ${resPinnacle.status}: ${text.slice(0,300)}`);
   }
-  if (!resDK.ok) {
-    const text = await resDK.text();
-    throw new Error(`OddsPapi DK error ${resDK.status}: ${text.slice(0,300)}`);
-  }
-
-  const fixtures    = await resPinnacle.json();
-  const dkFixtures  = await resDK.json();
-
-  // Build DK totals lookup by fixtureId
-  const dkTotalsMap = {};
-  for (const f of dkFixtures) {
-    const m106 = f.bookmakerOdds?.draftkings?.markets?.['106'];
-    if (m106?.outcomes) {
-      const overPrice  = getPrice(m106.outcomes['106']);
-      const underPrice = getPrice(m106.outcomes['107']);
-      const line       = getLine(m106.outcomes['106']);
-      if (overPrice && underPrice && line != null) {
-        dkTotalsMap[f.fixtureId] = { line: Math.abs(line), over: overPrice, under: underPrice };
-      }
-    }
-  }
-  console.log(`Got ${fixtures.length} Pinnacle fixtures, ${Object.keys(dkTotalsMap).length} DK totals`);
+  const fixtures = await resPinnacle.json();
+  console.log(`Got ${fixtures.length} Pinnacle fixtures`);
   console.log(`Got ${fixtures.length} fixtures`);
 
   // IMPORTANT: Never delete match documents — existing bets reference these IDs.
@@ -232,24 +208,36 @@ async function run() {
     if (!moneyline) { console.log(`No moneyline for: ${home} vs ${away}`); skipped++; continue; }
     console.log(`${home} vs ${away}: ML ${moneyline.home}/${moneyline.draw}/${moneyline.away}`);
 
-    // ── Market 106: Over/Under — try Pinnacle first, fall back to DraftKings ──
+    // ── Over/Under Totals — parse from bookmakerOutcomeId (e.g. "2.5/over") ──
+    // Priority order: 2.5, 2.0, 2.75, 1.5, 3.5
     let total = null;
-    const m106 = markets['106'];
-    if (m106?.outcomes) {
-      const overPrice  = getPrice(m106.outcomes['106']);
-      const underPrice = getPrice(m106.outcomes['107']);
-      const line       = getLine(m106.outcomes['106']);
-      if (overPrice && underPrice && line != null) {
-        total = { line: Math.abs(line), over: overPrice, under: underPrice };
-        console.log(`  Total (Pinnacle): O${total.line} ${overPrice}/${underPrice}`);
+    const TOTAL_MARKET_IDS = ['1010', '10168', '10172', '10258', '1012'];
+
+    function parseTotalMarket(market) {
+      if (!market?.outcomes) return null;
+      let overPrice = null, underPrice = null, line = null;
+      for (const outcome of Object.values(market.outcomes)) {
+        const player = Object.values(outcome.players || {})[0];
+        if (!player?.bookmakerOutcomeId) continue;
+        const id = player.bookmakerOutcomeId.toLowerCase();
+        const match = id.match(/^([0-9.]+)\/(over|under)$/);
+        if (!match) continue;
+        const thisLine = parseFloat(match[1]);
+        const price = parseInt(player.priceAmerican, 10);
+        if (match[2] === 'over')  { overPrice = price;  line = thisLine; }
+        if (match[2] === 'under') { underPrice = price; line = thisLine; }
       }
+      return (overPrice && underPrice && line) ? { line, over: overPrice, under: underPrice } : null;
     }
-    // Fall back to DraftKings totals if Pinnacle doesn't have it
-    if (!total && dkTotalsMap[fixture.fixtureId]) {
-      total = dkTotalsMap[fixture.fixtureId];
-      console.log(`  Total (DraftKings): O${total.line} ${total.over}/${total.under}`);
+
+    for (const mId of TOTAL_MARKET_IDS) {
+      const result = parseTotalMarket(markets[mId]);
+      if (result) { total = result; break; }
     }
-    if (!total) {
+
+    if (total) {
+      console.log(`  Total: O${total.line} ${total.over}/${total.under}`);
+    } else {
       console.log(`  No total goals data for: ${home} vs ${away}`);
     }
 
