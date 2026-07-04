@@ -135,6 +135,7 @@ let cBets = [];        // custom_bets
 let cBalances = {};    // custom_balances
 let selected = null;   // { eventId, betId, optIdx, label, odds, eventTitle, betLabel }
 let pinSel = null, pinVal = "";
+let editingEventId = null;
 let unsubEvents = null, unsubBets = null, unsubBals = null;
 
 const app = document.getElementById("app");
@@ -232,6 +233,12 @@ function renderLogin() {
   </div>`;
 }
 
+function isEventLocked(ev) {
+  if (ev.locked) return true;
+  if (ev.startTime && Date.now() >= ev.startTime) return true;
+  return false;
+}
+
 function renderEvents() {
   let html = "";
   const openEvents = events.filter(e => !e.archived);
@@ -242,7 +249,8 @@ function renderEvents() {
   openEvents.forEach(ev => {
     html += `<div class="event-card">`;
     html += `<div class="event-title">${ev.title}</div>`;
-    html += `<div class="event-sub">${ev.subtitle || ""}${ev.locked ? " · 🔒 Locked" : ""}</div>`;
+    const evLocked = isEventLocked(ev);
+    html += `<div class="event-sub">${ev.subtitle || ""}${evLocked ? " · 🔒 Locked" : ""}</div>`;
 
     (ev.bets || []).forEach((bet, bIdx) => {
       html += `<div class="bet-block">`;
@@ -255,8 +263,8 @@ function renderEvents() {
         let cls = "opt-pill";
         if (myBet) cls += " mine";
         if (isSettled) cls += isWinner ? " won" : " lost";
-        if (ev.locked || isSettled) cls += " locked";
-        html += `<span class="${cls}" data-event="${ev.id}" data-bidx="${bIdx}" data-oidx="${oIdx}" data-odds="${opt.odds}" data-label="${opt.label}" data-betlabel="${bet.label}" data-eventtitle="${ev.title}" data-locked="${ev.locked || isSettled ? "1" : "0"}">${opt.label} ${fmtOdds(opt.odds)}</span>`;
+        if (evLocked || isSettled) cls += " locked";
+        html += `<span class="${cls}" data-event="${ev.id}" data-bidx="${bIdx}" data-oidx="${oIdx}" data-odds="${opt.odds}" data-label="${opt.label}" data-betlabel="${bet.label}" data-eventtitle="${ev.title}" data-locked="${evLocked || isSettled ? "1" : "0"}">${opt.label} ${fmtOdds(opt.odds)}</span>`;
       });
       html += `</div></div>`;
     });
@@ -322,8 +330,8 @@ function renderManage() {
     <div style="font-weight:700;font-size:14px;color:#993C1D;margin-bottom:8px;">Create Event</div>
     <label>Event Title</label>
     <input id="ev-title" placeholder="e.g. Softball vs Carpet Munchers" />
-    <label>Subtitle / Date (optional)</label>
-    <input id="ev-sub" placeholder="e.g. Fri Jul 10 · 6:30 PM" />
+    <label>Date &amp; Time (event auto-locks at this time)</label>
+    <input id="ev-start" type="datetime-local" />
     <div id="bet-builder"></div>
     <button class="btn-gray" id="add-bet-row" style="margin-top:10px;">+ Add Bet</button>
     <button class="btn-blue" id="create-event" style="margin-top:10px;width:100%;">Create Event</button>
@@ -331,11 +339,42 @@ function renderManage() {
 
   // Existing events management
   events.filter(e => !e.archived).forEach(ev => {
+    // ── EDIT MODE ──
+    if (editingEventId === ev.id) {
+      html += `<div class="comm-form" style="border-color:#185FA5;">
+        <div style="font-weight:700;font-size:14px;color:#185FA5;margin-bottom:8px;">✏️ Editing: ${ev.title}</div>
+        <label>Event Title</label>
+        <input id="edit-title" value="${(ev.title||"").replace(/"/g,'&quot;')}" />
+        <label>Date &amp; Time</label>
+        <input id="edit-start" type="datetime-local" value="${toDatetimeLocal(ev.startTime)}" />`;
+
+      (ev.bets||[]).forEach((bet, bIdx) => {
+        html += `<div class="comm-add-bet">
+          <label>Bet ${bIdx+1} Label ${bet.settled ? "(settled — label only)" : ""}</label>
+          <input class="edit-bet-label" data-bidx="${bIdx}" value="${(bet.label||"").replace(/"/g,'&quot;')}" />`;
+        (bet.options||[]).forEach((opt, oIdx) => {
+          const hasBets = cBets.some(b => b.eventId === ev.id && b.betIdx === bIdx && b.optIdx === oIdx && b.status === "pending");
+          html += `<div class="comm-opt-row">
+            <input class="edit-opt-label" data-bidx="${bIdx}" data-oidx="${oIdx}" value="${(opt.label||"").replace(/"/g,'&quot;')}" ${bet.settled?"disabled":""} />
+            <input class="edit-opt-odds" data-bidx="${bIdx}" data-oidx="${oIdx}" value="${opt.odds}" style="max-width:110px;" ${bet.settled||hasBets?"disabled title='Has pending bets'":""} />
+          </div>`;
+        });
+        html += `</div>`;
+      });
+
+      html += `<div style="display:flex;gap:8px;margin-top:12px;">
+        <button class="btn-blue" id="save-edit" data-evid="${ev.id}" style="flex:1;">Save Changes</button>
+        <button class="btn-gray" id="cancel-edit">Cancel</button>
+      </div></div>`;
+      return;
+    }
+
     html += `<div class="event-card">
-      <div style="display:flex;justify-content:space-between;align-items:center;">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">
         <div><div class="event-title">${ev.title}</div>
-        <div class="event-sub">${ev.subtitle||""}</div></div>
-        <div style="display:flex;gap:6px;">
+        <div class="event-sub">${ev.subtitle||""}${isEventLocked(ev)?" · 🔒":""}</div></div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          <button class="btn-blue" data-editev="${ev.id}" style="padding:6px 14px;font-size:12px;">Edit</button>
           <button class="${ev.locked?"btn-gray":"btn-orange"}" data-lockev="${ev.id}" data-locked="${ev.locked?"1":"0"}">${ev.locked?"Unlock":"Lock"}</button>
           <button class="btn-red" data-delev="${ev.id}">Delete</button>
         </div>
@@ -429,6 +468,59 @@ function wireMain() {
 
     document.getElementById("add-bet-row")?.addEventListener("click", addBetRow);
     document.getElementById("create-event")?.addEventListener("click", createEvent);
+
+    // Edit event
+    app.querySelectorAll("[data-editev]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        editingEventId = btn.dataset.editev;
+        render();
+      });
+    });
+
+    document.getElementById("cancel-edit")?.addEventListener("click", () => {
+      editingEventId = null;
+      render();
+    });
+
+    document.getElementById("save-edit")?.addEventListener("click", async () => {
+      const evId = document.getElementById("save-edit").dataset.evid;
+      const ev = events.find(e => e.id === evId);
+      if (!ev) return;
+
+      const newTitle = document.getElementById("edit-title")?.value.trim();
+      const startRaw = document.getElementById("edit-start")?.value;
+      const newStart = startRaw ? new Date(startRaw).getTime() : null;
+      if (!newTitle) { toast("Title cannot be empty.", "error"); return; }
+
+      // Rebuild bets array with edited values
+      const newBets = (ev.bets || []).map((bet, bIdx) => {
+        const labelInput = document.querySelector(`.edit-bet-label[data-bidx="${bIdx}"]`);
+        const newBet = { ...bet, label: labelInput?.value.trim() || bet.label };
+        newBet.options = (bet.options || []).map((opt, oIdx) => {
+          const lblEl = document.querySelector(`.edit-opt-label[data-bidx="${bIdx}"][data-oidx="${oIdx}"]`);
+          const oddsEl = document.querySelector(`.edit-opt-odds[data-bidx="${bIdx}"][data-oidx="${oIdx}"]`);
+          const newOpt = { ...opt };
+          if (lblEl && !lblEl.disabled && lblEl.value.trim()) newOpt.label = lblEl.value.trim();
+          if (oddsEl && !oddsEl.disabled) {
+            const v = parseInt(oddsEl.value);
+            if (!isNaN(v)) newOpt.odds = v;
+          }
+          return newOpt;
+        });
+        return newBet;
+      });
+
+      await updateDoc(doc(db, "custom_events", evId), {
+        title: newTitle,
+        startTime: newStart,
+        subtitle: newStart ? fmtDateLabel(newStart) : (ev.subtitle || ""),
+        bets: newBets,
+      });
+
+      editingEventId = null;
+      toast("✓ Event updated");
+      render();
+    });
 
     app.querySelectorAll("[data-lockev]").forEach(btn => {
       btn.addEventListener("click", async () => {
@@ -544,9 +636,27 @@ function addBetRow() {
   });
 }
 
+function fmtDateLabel(ms) {
+  if (!ms) return "";
+  return new Date(ms).toLocaleString("en-US", {
+    timeZone: "America/Chicago",
+    weekday: "short", month: "short", day: "numeric",
+    hour: "numeric", minute: "2-digit", hour12: true
+  }).replace(",", " ·") + " CT";
+}
+
+function toDatetimeLocal(ms) {
+  if (!ms) return "";
+  const d = new Date(ms);
+  const pad = n => String(n).padStart(2, "0");
+  return d.getFullYear() + "-" + pad(d.getMonth()+1) + "-" + pad(d.getDate()) + "T" + pad(d.getHours()) + ":" + pad(d.getMinutes());
+}
+
 async function createEvent() {
   const title = document.getElementById("ev-title")?.value.trim();
-  const subtitle = document.getElementById("ev-sub")?.value.trim();
+  const startRaw = document.getElementById("ev-start")?.value;
+  const startTime = startRaw ? new Date(startRaw).getTime() : null;
+  const subtitle = startTime ? fmtDateLabel(startTime) : "";
   if (!title) { toast("Enter an event title.", "error"); return; }
 
   const bets = [];
@@ -565,7 +675,7 @@ async function createEvent() {
   if (bets.length === 0) { toast("Add at least one bet with options.", "error"); return; }
 
   await addDoc(collection(db, "custom_events"), {
-    title, subtitle,
+    title, subtitle, startTime,
     bets,
     locked: false,
     archived: false,
