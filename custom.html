@@ -325,6 +325,19 @@ function renderLeaderboard() {
 function renderManage() {
   let html = "";
 
+  // Balance editor
+  html += `<div class="comm-form">
+    <div style="font-weight:700;font-size:14px;color:#993C1D;margin-bottom:8px;">Edit Balances</div>
+    <div style="font-size:11px;color:#888;margin-bottom:8px;">Directly set each player's custom balance (e.g. to log bets from before the app).</div>
+    ${PLAYERS.map((p,i) => `
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+        <div style="width:34px;height:34px;border-radius:50%;background:${BGS[i]};color:${COLORS[i]};display:flex;align-items:center;justify-content:center;font-weight:600;font-size:12px;flex-shrink:0;">${INITIALS[i]}</div>
+        <div style="font-weight:600;font-size:13px;min-width:44px;">${p}</div>
+        <input class="bal-edit" data-player="${p}" type="number" value="${cBalances[p] ?? 0}" style="flex:1;padding:8px 10px;border:1px solid #ddd;border-radius:7px;font-size:14px;" />
+      </div>`).join("")}
+    <button class="btn-blue" id="save-balances" style="margin-top:8px;width:100%;">Save Balances</button>
+  </div>`;
+
   // Create event form
   html += `<div class="comm-form">
     <div style="font-weight:700;font-size:14px;color:#993C1D;margin-bottom:8px;">Create Event</div>
@@ -468,6 +481,20 @@ function wireMain() {
 
     document.getElementById("add-bet-row")?.addEventListener("click", addBetRow);
     document.getElementById("create-event")?.addEventListener("click", createEvent);
+
+    // Save balances
+    document.getElementById("save-balances")?.addEventListener("click", async () => {
+      const inputs = app.querySelectorAll(".bal-edit");
+      for (const input of inputs) {
+        const player = input.dataset.player;
+        const val = parseInt(input.value);
+        if (isNaN(val)) { toast("Invalid balance for " + player, "error"); return; }
+        if ((cBalances[player] ?? 0) !== val) {
+          await setDoc(doc(db, "custom_balances", player), { amount: val });
+        }
+      }
+      toast("✓ Balances saved");
+    });
 
     // Edit event
     app.querySelectorAll("[data-editev]").forEach(btn => {
