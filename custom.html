@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Goonsquad Custom Bets</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background:#f4f4f2; color:#1a1a1a; padding-bottom:60px; }
+  .container { max-width:760px; margin:0 auto; padding:12px; }
+
+  /* Page switcher */
+  .page-switch { display:flex; background:#e8e8e6; border-radius:10px; padding:3px; margin-bottom:12px; }
+  .page-switch a { flex:1; text-align:center; padding:8px; border-radius:8px; font-size:13px; font-weight:600; text-decoration:none; color:#666; }
+  .page-switch a.active { background:#fff; color:#1a1a1a; box-shadow:0 1px 3px rgba(0,0,0,0.1); }
+
+  /* Login */
+  .login-box { max-width:320px; margin:60px auto; text-align:center; }
+  .login-title { font-size:20px; font-weight:700; margin-bottom:20px; }
+  .player-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:16px; }
+  .player-btn { padding:16px; border:2px solid #ddd; border-radius:12px; background:#fff; font-size:16px; font-weight:600; cursor:pointer; }
+  .player-btn.sel { border-color:#185FA5; background:#E6F1FB; }
+  .pin-input { width:100%; padding:12px; font-size:20px; text-align:center; border:1px solid #ddd; border-radius:10px; margin-bottom:10px; letter-spacing:8px; }
+  .login-go { width:100%; padding:12px; background:#185FA5; color:#fff; border:none; border-radius:10px; font-size:15px; font-weight:600; cursor:pointer; }
+  .login-err { color:#A32D2D; font-size:13px; margin-top:8px; }
+
+  /* Header */
+  .top { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+  .top-name { font-weight:700; font-size:17px; color:#185FA5; }
+  .top-switch { font-size:13px; color:#888; cursor:pointer; background:none; border:none; }
+
+  /* Balance */
+  .bal-card { background:#fff; border-radius:12px; padding:14px 16px; margin-bottom:14px; display:flex; justify-content:space-between; align-items:center; }
+  .bal-label { font-size:10px; font-weight:600; color:#888; text-transform:uppercase; }
+  .bal-amount { font-size:26px; font-weight:700; }
+  .bal-pos { color:#3B6D11; }
+  .bal-neg { color:#A32D2D; }
+
+  /* Tabs */
+  .tabs { display:flex; gap:4px; border-bottom:1px solid #ddd; margin-bottom:14px; overflow-x:auto; }
+  .tab { padding:8px 14px; font-size:13px; font-weight:600; color:#888; background:none; border:none; border-bottom:2px solid transparent; cursor:pointer; white-space:nowrap; }
+  .tab.active { color:#1a1a1a; border-bottom-color:#1a1a1a; }
+  .tab.comm { color:#993C1D; }
+
+  /* Event cards */
+  .event-card { background:#fff; border-radius:12px; padding:14px 16px; margin-bottom:12px; }
+  .event-title { font-weight:700; font-size:15px; }
+  .event-sub { font-size:11px; color:#888; margin-bottom:10px; }
+  .bet-block { border-top:1px solid #f0f0f0; padding:10px 0; }
+  .bet-label { font-size:13px; font-weight:600; margin-bottom:6px; }
+  .opt-row { display:flex; gap:6px; flex-wrap:wrap; }
+  .opt-pill { background:#f0f4fb; border:1px solid #c8d8f0; border-radius:18px; padding:5px 14px; font-size:13px; font-weight:600; color:#185FA5; cursor:pointer; }
+  .opt-pill.mine { background:#185FA5; color:#fff; }
+  .opt-pill.won  { background:#EAF3DE; color:#3B6D11; border-color:#9CC97A; }
+  .opt-pill.lost { background:#f8f8f8; color:#bbb; border-color:#e5e5e5; text-decoration:line-through; }
+  .opt-pill.locked { cursor:default; opacity:0.85; }
+
+  /* Bet slip */
+  .slip { position:fixed; bottom:0; left:0; right:0; background:#fff; border-top:1px solid #ddd; padding:12px 16px; box-shadow:0 -4px 12px rgba(0,0,0,0.08); z-index:100; }
+  .slip-inner { max-width:760px; margin:0 auto; }
+  .slip-head { display:flex; justify-content:space-between; font-size:13px; margin-bottom:8px; }
+  .slip-close { background:none; border:none; color:#888; cursor:pointer; font-size:16px; }
+  .slip-row { display:flex; gap:8px; }
+  .slip-row input { flex:1; padding:10px; border:1px solid #ddd; border-radius:8px; font-size:15px; }
+  .slip-row button { padding:10px 22px; background:#185FA5; color:#fff; border:none; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; }
+  .slip-calc { font-size:12px; color:#3B6D11; margin-top:6px; font-weight:600; }
+  .slip-err { font-size:12px; color:#A32D2D; margin-top:6px; }
+
+  /* Commissioner forms */
+  .comm-form { background:#fff; border:1px dashed #ccc; border-radius:12px; padding:16px; margin-bottom:14px; }
+  .comm-form label { font-size:11px; font-weight:600; color:#888; display:block; margin:8px 0 3px; }
+  .comm-form input { width:100%; padding:8px 10px; border:1px solid #ddd; border-radius:7px; font-size:13px; }
+  .comm-add-bet { margin-top:12px; padding:10px; background:#f8f8f8; border-radius:8px; }
+  .comm-opt-row { display:flex; gap:6px; margin-top:6px; }
+  .comm-opt-row input { flex:1; }
+  .btn-blue { background:#185FA5; color:#fff; border:none; border-radius:8px; padding:9px 18px; font-size:13px; font-weight:600; cursor:pointer; }
+  .btn-green { background:#3B6D11; color:#fff; border:none; border-radius:8px; padding:6px 14px; font-size:12px; font-weight:600; cursor:pointer; }
+  .btn-orange { background:#C86A00; color:#fff; border:none; border-radius:8px; padding:6px 14px; font-size:12px; font-weight:600; cursor:pointer; }
+  .btn-gray { background:#eee; color:#666; border:none; border-radius:8px; padding:6px 14px; font-size:12px; cursor:pointer; }
+  .btn-red { background:#A32D2D; color:#fff; border:none; border-radius:8px; padding:6px 14px; font-size:12px; font-weight:600; cursor:pointer; }
+
+  /* Leaderboard */
+  .lb-row { background:#fff; border-radius:12px; padding:12px 16px; margin-bottom:8px; display:flex; align-items:center; gap:12px; }
+  .lb-rank { font-size:15px; font-weight:600; color:#ccc; min-width:26px; }
+  .lb-avatar { width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:600; font-size:12px; }
+  .lb-name { flex:1; font-weight:700; font-size:14px; }
+  .lb-rec { font-size:11px; color:#888; }
+  .lb-bal { font-size:19px; font-weight:700; }
+
+  /* Bet cards (my bets) */
+  .bet-card { background:#fff; border-radius:10px; padding:12px 14px; margin-bottom:8px; }
+  .bet-card-head { display:flex; justify-content:space-between; align-items:center; }
+  .bet-card-title { font-size:13px; font-weight:600; }
+  .bet-card-sub { font-size:11px; color:#888; margin-top:2px; }
+  .status-tag { font-size:11px; font-weight:700; padding:3px 10px; border-radius:12px; }
+  .st-pending { background:#E6F1FB; color:#185FA5; }
+  .st-won  { background:#EAF3DE; color:#3B6D11; }
+  .st-lost { background:#FCEBEB; color:#A32D2D; }
+  .st-push { background:#FFF4E0; color:#C86A00; }
+
+  .toast { position:fixed; top:14px; left:50%; transform:translateX(-50%); background:#1a1a1a; color:#fff; padding:10px 20px; border-radius:24px; font-size:13px; z-index:999; opacity:0; transition:opacity .25s; pointer-events:none; }
+  .toast.show { opacity:1; }
+  .toast.error { background:#A32D2D; }
+</style>
+</head>
+<body>
+<div class="container" id="app"></div>
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, collection, doc, getDocs, getDoc, setDoc, addDoc, updateDoc, deleteDoc, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const FIREBASE_CONFIG = {
+  apiKey:            "AIzaSyDpnbCag54EDtOrwkocmIummeZJ9vpr00k",
+  authDomain:        "goonsquad-futbol.firebaseapp.com",
+  projectId:         "goonsquad-futbol",
+  storageBucket:     "goonsquad-futbol.firebasestorage.app",
+  messagingSenderId: "518391194891",
+  appId:             "1:518391194891:web:d16cead641b9e3c1a0ae0e",
+};
+
+const PLAYERS  = ["R3", "Une", "AK", "Brez"];
+const PINS     = { R3:"4751", Une:"8392", AK:"6047", Brez:"2815" };
+const COLORS   = ["#185FA5", "#3B6D11", "#993C1D", "#534AB7"];
+const BGS      = ["#E6F1FB", "#EAF3DE", "#FAECE7", "#EEEDFE"];
+const INITIALS = ["R3", "UN", "AK", "BR"];
+const COMMISSIONER = "R3";
+
+let db;
+let currentPlayer = null;
+let activeTab = "events";
+let events = [];       // custom_events
+let cBets = [];        // custom_bets
+let cBalances = {};    // custom_balances
+let selected = null;   // { eventId, betId, optIdx, label, odds, eventTitle, betLabel }
+let pinSel = null, pinVal = "";
+let unsubEvents = null, unsubBets = null, unsubBals = null;
+
+const app = document.getElementById("app");
+
+function toast(msg, type) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.className = "toast show" + (type === "error" ? " error" : "");
+  setTimeout(() => { t.className = "toast"; }, 2600);
+}
+
+function fmtOdds(o) { return o > 0 ? "+" + o : "" + o; }
+function calcPayout(wager, odds) {
+  return odds > 0 ? Math.round(wager * odds / 100) : Math.round(wager * 100 / Math.abs(odds));
+}
+
+function initFirebase() {
+  const fbApp = initializeApp(FIREBASE_CONFIG);
+  db = getFirestore(fbApp);
+}
+
+function subscribe() {
+  unsubEvents = onSnapshot(collection(db, "custom_events"), snap => {
+    events = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    events.sort((a,b) => (b.createdAt||0) - (a.createdAt||0));
+    render();
+  });
+  unsubBets = onSnapshot(collection(db, "custom_bets"), snap => {
+    cBets = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    render();
+  });
+  unsubBals = onSnapshot(collection(db, "custom_balances"), snap => {
+    cBalances = {};
+    snap.docs.forEach(d => { cBalances[d.id] = d.data().amount ?? 0; });
+    render();
+  });
+}
+
+// ─────────── RENDER ───────────
+function render() {
+  let html = "";
+
+  // Page switcher always on top
+  html += `<div class="page-switch">
+    <a href="index.html">⚽ World Cup</a>
+    <a href="custom.html" class="active">🎯 Custom Bets</a>
+  </div>`;
+
+  if (!currentPlayer) {
+    html += renderLogin();
+    app.innerHTML = html;
+    wireLogin();
+    return;
+  }
+
+  const bal = cBalances[currentPlayer] ?? 0;
+  const balCls = bal >= 0 ? "bal-pos" : "bal-neg";
+
+  html += `<div class="top">
+    <div class="top-name">${currentPlayer}</div>
+    <button class="top-switch" id="logout">Switch player</button>
+  </div>`;
+
+  html += `<div class="bal-card">
+    <div><div class="bal-label">Custom Balance</div>
+    <div class="bal-amount ${balCls}">${bal >= 0 ? "+" : ""}${bal.toLocaleString()}</div></div>
+    <div style="font-size:11px;color:#aaa;">Starts at 0 · Can go negative</div>
+  </div>`;
+
+  html += `<div class="tabs">
+    <button class="tab ${activeTab==="events"?"active":""}" data-tab="events">Events</button>
+    <button class="tab ${activeTab==="mybets"?"active":""}" data-tab="mybets">My Bets</button>
+    <button class="tab ${activeTab==="leaderboard"?"active":""}" data-tab="leaderboard">Leaderboard</button>
+    ${currentPlayer === COMMISSIONER ? `<button class="tab comm ${activeTab==="manage"?"active":""}" data-tab="manage">Manage</button>` : ""}
+  </div>`;
+
+  if (activeTab === "events")      html += renderEvents();
+  if (activeTab === "mybets")      html += renderMyBets();
+  if (activeTab === "leaderboard") html += renderLeaderboard();
+  if (activeTab === "manage" && currentPlayer === COMMISSIONER) html += renderManage();
+
+  app.innerHTML = html;
+  wireMain();
+}
+
+function renderLogin() {
+  return `<div class="login-box">
+    <div class="login-title">🎯 Custom Bets</div>
+    <div class="player-grid">
+      ${PLAYERS.map((p,i) => `<button class="player-btn ${pinSel===p?"sel":""}" data-player="${p}">${p}</button>`).join("")}
+    </div>
+    <input type="password" inputmode="numeric" maxlength="4" class="pin-input" id="pin" placeholder="••••" value="${pinVal}" />
+    <button class="login-go" id="login-go">Enter</button>
+    <div class="login-err" id="login-err"></div>
+  </div>`;
+}
+
+function renderEvents() {
+  let html = "";
+  const openEvents = events.filter(e => !e.archived);
+  if (openEvents.length === 0) {
+    html += '<div style="text-align:center;color:#aaa;padding:3rem 0;font-size:14px;">No events yet.</div>';
+  }
+
+  openEvents.forEach(ev => {
+    html += `<div class="event-card">`;
+    html += `<div class="event-title">${ev.title}</div>`;
+    html += `<div class="event-sub">${ev.subtitle || ""}${ev.locked ? " · 🔒 Locked" : ""}</div>`;
+
+    (ev.bets || []).forEach((bet, bIdx) => {
+      html += `<div class="bet-block">`;
+      html += `<div class="bet-label">${bet.label}</div>`;
+      html += `<div class="opt-row">`;
+      (bet.options || []).forEach((opt, oIdx) => {
+        const myBet = cBets.find(b => b.player === currentPlayer && b.eventId === ev.id && b.betIdx === bIdx && b.optIdx === oIdx && b.status !== "deleted");
+        const isSettled = bet.settled;
+        const isWinner  = bet.winnerIdx === oIdx;
+        let cls = "opt-pill";
+        if (myBet) cls += " mine";
+        if (isSettled) cls += isWinner ? " won" : " lost";
+        if (ev.locked || isSettled) cls += " locked";
+        html += `<span class="${cls}" data-event="${ev.id}" data-bidx="${bIdx}" data-oidx="${oIdx}" data-odds="${opt.odds}" data-label="${opt.label}" data-betlabel="${bet.label}" data-eventtitle="${ev.title}" data-locked="${ev.locked || isSettled ? "1" : "0"}">${opt.label} ${fmtOdds(opt.odds)}</span>`;
+      });
+      html += `</div></div>`;
+    });
+
+    html += `</div>`;
+  });
+  return html;
+}
+
+function renderMyBets() {
+  let html = "";
+  const mine = cBets.filter(b => b.player === currentPlayer && b.status !== "deleted")
+    .sort((a,b) => (b.createdAt?.seconds||0) - (a.createdAt?.seconds||0));
+  if (mine.length === 0) return '<div style="text-align:center;color:#aaa;padding:3rem 0;font-size:14px;">No bets yet.</div>';
+
+  mine.forEach(b => {
+    const stCls = { pending:"st-pending", won:"st-won", lost:"st-lost", push:"st-push" }[b.status] || "st-pending";
+    const stLbl = { pending:"Pending", won:"Won ✓", lost:"Lost ✗", push:"Push ~" }[b.status] || b.status;
+    html += `<div class="bet-card">
+      <div class="bet-card-head">
+        <div>
+          <div class="bet-card-title">${b.eventTitle} — ${b.betLabel}</div>
+          <div class="bet-card-sub">${b.optionLabel} (${fmtOdds(b.odds)}) · Wager ${b.wager} · To win ${b.toWin}</div>
+        </div>
+        <span class="status-tag ${stCls}">${stLbl}</span>
+      </div>
+    </div>`;
+  });
+  return html;
+}
+
+function renderLeaderboard() {
+  let html = "";
+  const board = PLAYERS.map((p,i) => {
+    const pb = cBets.filter(b => b.player === p && b.status !== "deleted");
+    return {
+      player: p, idx: i,
+      bal: cBalances[p] ?? 0,
+      won: pb.filter(b => b.status==="won").length,
+      lost: pb.filter(b => b.status==="lost").length,
+      push: pb.filter(b => b.status==="push").length,
+      pending: pb.filter(b => b.status==="pending").length,
+    };
+  }).sort((a,b) => b.bal - a.bal);
+
+  board.forEach((e, rank) => {
+    const balCls = e.bal >= 0 ? "bal-pos" : "bal-neg";
+    html += `<div class="lb-row">
+      <div class="lb-rank">#${rank+1}</div>
+      <div class="lb-avatar" style="background:${BGS[e.idx]};color:${COLORS[e.idx]};">${INITIALS[e.idx]}</div>
+      <div class="lb-name">${e.player}<div class="lb-rec">${e.won}-${e.lost}-${e.push}${e.pending ? " · " + e.pending + " pending" : ""}</div></div>
+      <div class="lb-bal ${balCls}">${e.bal >= 0 ? "+" : ""}${e.bal.toLocaleString()}</div>
+    </div>`;
+  });
+  return html;
+}
+
+function renderManage() {
+  let html = "";
+
+  // Create event form
+  html += `<div class="comm-form">
+    <div style="font-weight:700;font-size:14px;color:#993C1D;margin-bottom:8px;">Create Event</div>
+    <label>Event Title</label>
+    <input id="ev-title" placeholder="e.g. Softball vs Carpet Munchers" />
+    <label>Subtitle / Date (optional)</label>
+    <input id="ev-sub" placeholder="e.g. Fri Jul 10 · 6:30 PM" />
+    <div id="bet-builder"></div>
+    <button class="btn-gray" id="add-bet-row" style="margin-top:10px;">+ Add Bet</button>
+    <button class="btn-blue" id="create-event" style="margin-top:10px;width:100%;">Create Event</button>
+  </div>`;
+
+  // Existing events management
+  events.filter(e => !e.archived).forEach(ev => {
+    html += `<div class="event-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div><div class="event-title">${ev.title}</div>
+        <div class="event-sub">${ev.subtitle||""}</div></div>
+        <div style="display:flex;gap:6px;">
+          <button class="${ev.locked?"btn-gray":"btn-orange"}" data-lockev="${ev.id}" data-locked="${ev.locked?"1":"0"}">${ev.locked?"Unlock":"Lock"}</button>
+          <button class="btn-red" data-delev="${ev.id}">Delete</button>
+        </div>
+      </div>`;
+
+    (ev.bets || []).forEach((bet, bIdx) => {
+      html += `<div class="bet-block">
+        <div class="bet-label">${bet.label} ${bet.settled ? '<span style="color:#3B6D11;font-size:11px;">✓ Settled</span>' : ""}</div>`;
+      if (!bet.settled) {
+        html += `<div class="opt-row">`;
+        (bet.options||[]).forEach((opt, oIdx) => {
+          html += `<button class="btn-green" data-settleev="${ev.id}" data-bidx="${bIdx}" data-oidx="${oIdx}">${opt.label} Won</button>`;
+        });
+        html += `<button class="btn-orange" data-pushev="${ev.id}" data-bidx="${bIdx}">Push (refund all)</button>`;
+        html += `</div>`;
+      } else {
+        const w = bet.winnerIdx != null ? (bet.options[bet.winnerIdx]?.label || "?") : "Push";
+        html += `<div style="font-size:12px;color:#888;">Result: ${w}</div>`;
+      }
+      html += `</div>`;
+    });
+
+    html += `</div>`;
+  });
+
+  return html;
+}
+
+// ─────────── WIRING ───────────
+function wireLogin() {
+  app.querySelectorAll(".player-btn").forEach(btn => {
+    btn.addEventListener("click", () => { pinSel = btn.dataset.player; render(); });
+  });
+  const pin = document.getElementById("pin");
+  pin?.addEventListener("input", e => { pinVal = e.target.value; });
+  document.getElementById("login-go")?.addEventListener("click", tryLogin);
+  pin?.addEventListener("keydown", e => { if (e.key === "Enter") tryLogin(); });
+}
+
+function tryLogin() {
+  if (!pinSel) { document.getElementById("login-err").textContent = "Select a player."; return; }
+  if (pinVal !== PINS[pinSel]) { document.getElementById("login-err").textContent = "Wrong PIN."; return; }
+  currentPlayer = pinSel; pinVal = "";
+  ensureBalance(currentPlayer);
+  subscribe();
+  render();
+}
+
+async function ensureBalance(player) {
+  const ref = doc(db, "custom_balances", player);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) await setDoc(ref, { amount: 0 });
+}
+
+let betRowCount = 0;
+
+function wireMain() {
+  document.getElementById("logout")?.addEventListener("click", () => {
+    currentPlayer = null;
+    if (unsubEvents) unsubEvents(); if (unsubBets) unsubBets(); if (unsubBals) unsubBals();
+    render();
+  });
+
+  app.querySelectorAll(".tab").forEach(t => {
+    t.addEventListener("click", () => { activeTab = t.dataset.tab; selected = null; render(); });
+  });
+
+  // Option pill click → open bet slip
+  app.querySelectorAll(".opt-pill").forEach(pill => {
+    pill.addEventListener("click", () => {
+      if (pill.dataset.locked === "1") return;
+      selected = {
+        eventId: pill.dataset.event,
+        betIdx: parseInt(pill.dataset.bidx),
+        optIdx: parseInt(pill.dataset.oidx),
+        odds: parseInt(pill.dataset.odds),
+        label: pill.dataset.label,
+        betLabel: pill.dataset.betlabel,
+        eventTitle: pill.dataset.eventtitle,
+      };
+      showSlip();
+    });
+  });
+
+  // ── Commissioner: manage tab ──
+  if (activeTab === "manage" && currentPlayer === COMMISSIONER) {
+    betRowCount = 0;
+    addBetRow(); // start with one bet row
+
+    document.getElementById("add-bet-row")?.addEventListener("click", addBetRow);
+    document.getElementById("create-event")?.addEventListener("click", createEvent);
+
+    app.querySelectorAll("[data-lockev]").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const locked = btn.dataset.locked === "1";
+        await updateDoc(doc(db, "custom_events", btn.dataset.lockev), { locked: !locked });
+        toast(locked ? "Unlocked." : "Locked.", "success");
+      });
+    });
+
+    app.querySelectorAll("[data-delev]").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        if (!confirm("Delete this event? Pending bets will be refunded.")) return;
+        const evId = btn.dataset.delev;
+        const evBets = cBets.filter(b => b.eventId === evId && b.status === "pending");
+        for (const b of evBets) {
+          const cur = cBalances[b.player] ?? 0;
+          await setDoc(doc(db, "custom_balances", b.player), { amount: cur + b.wager });
+          await updateDoc(doc(db, "custom_bets", b.id), { status: "deleted" });
+        }
+        await deleteDoc(doc(db, "custom_events", evId));
+        toast("Event deleted, pending bets refunded.");
+      });
+    });
+
+    // Settle a bet: mark winner
+    app.querySelectorAll("[data-settleev]").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const evId = btn.dataset.settleev;
+        const bIdx = parseInt(btn.dataset.bidx);
+        const oIdx = parseInt(btn.dataset.oidx);
+        const ev = events.find(e => e.id === evId);
+        const bet = ev?.bets?.[bIdx];
+        if (!bet) return;
+        if (!confirm(`Settle "${bet.label}" — winner: ${bet.options[oIdx].label}?`)) return;
+
+        // Settle all player bets on this bet
+        const playerBets = cBets.filter(b => b.eventId === evId && b.betIdx === bIdx && b.status === "pending");
+        for (const b of playerBets) {
+          const result = b.optIdx === oIdx ? "won" : "lost";
+          await updateDoc(doc(db, "custom_bets", b.id), { status: result });
+          if (result === "won") {
+            const cur = cBalances[b.player] ?? 0;
+            await setDoc(doc(db, "custom_balances", b.player), { amount: cur + b.wager + b.toWin });
+          }
+        }
+
+        // Mark bet as settled in the event
+        const newBets = [...ev.bets];
+        newBets[bIdx] = { ...bet, settled: true, winnerIdx: oIdx };
+        await updateDoc(doc(db, "custom_events", evId), { bets: newBets });
+        toast(`✓ Settled: ${bet.options[oIdx].label} wins (${playerBets.length} bets)`);
+      });
+    });
+
+    // Push a bet: refund everyone
+    app.querySelectorAll("[data-pushev]").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const evId = btn.dataset.pushev;
+        const bIdx = parseInt(btn.dataset.bidx);
+        const ev = events.find(e => e.id === evId);
+        const bet = ev?.bets?.[bIdx];
+        if (!bet) return;
+        if (!confirm(`Push "${bet.label}" — refund all wagers?`)) return;
+
+        const playerBets = cBets.filter(b => b.eventId === evId && b.betIdx === bIdx && b.status === "pending");
+        for (const b of playerBets) {
+          await updateDoc(doc(db, "custom_bets", b.id), { status: "push" });
+          const cur = cBalances[b.player] ?? 0;
+          await setDoc(doc(db, "custom_balances", b.player), { amount: cur + b.wager });
+        }
+
+        const newBets = [...ev.bets];
+        newBets[bIdx] = { ...bet, settled: true, winnerIdx: null };
+        await updateDoc(doc(db, "custom_events", evId), { bets: newBets });
+        toast(`Push — ${playerBets.length} wagers refunded`);
+      });
+    });
+  }
+}
+
+function addBetRow() {
+  const container = document.getElementById("bet-builder");
+  if (!container) return;
+  const idx = betRowCount++;
+  const div = document.createElement("div");
+  div.className = "comm-add-bet";
+  div.innerHTML = `
+    <label>Bet ${idx+1} Label</label>
+    <input class="bb-label" data-idx="${idx}" placeholder="e.g. Moneyline / R3 to Homer / Total Runs O/U 27.5" />
+    <div class="bb-options" data-idx="${idx}">
+      <div class="comm-opt-row">
+        <input class="bb-opt-label" placeholder="Option label (e.g. Nice Ash)" />
+        <input class="bb-opt-odds" placeholder="Odds (e.g. -150)" style="max-width:110px;" />
+      </div>
+      <div class="comm-opt-row">
+        <input class="bb-opt-label" placeholder="Option label (leave blank if N/A)" />
+        <input class="bb-opt-odds" placeholder="Odds" style="max-width:110px;" />
+      </div>
+    </div>
+    <button class="btn-gray bb-add-opt" data-idx="${idx}" style="margin-top:6px;font-size:11px;">+ Add Option</button>
+  `;
+  container.appendChild(div);
+
+  div.querySelector(".bb-add-opt").addEventListener("click", () => {
+    const optsDiv = div.querySelector(".bb-options");
+    const row = document.createElement("div");
+    row.className = "comm-opt-row";
+    row.innerHTML = `
+      <input class="bb-opt-label" placeholder="Option label" />
+      <input class="bb-opt-odds" placeholder="Odds" style="max-width:110px;" />
+    `;
+    optsDiv.appendChild(row);
+  });
+}
+
+async function createEvent() {
+  const title = document.getElementById("ev-title")?.value.trim();
+  const subtitle = document.getElementById("ev-sub")?.value.trim();
+  if (!title) { toast("Enter an event title.", "error"); return; }
+
+  const bets = [];
+  document.querySelectorAll(".comm-add-bet").forEach(betDiv => {
+    const label = betDiv.querySelector(".bb-label")?.value.trim();
+    if (!label) return;
+    const options = [];
+    betDiv.querySelectorAll(".comm-opt-row").forEach(row => {
+      const optLabel = row.querySelector(".bb-opt-label")?.value.trim();
+      const optOdds  = parseInt(row.querySelector(".bb-opt-odds")?.value.trim());
+      if (optLabel && !isNaN(optOdds)) options.push({ label: optLabel, odds: optOdds });
+    });
+    if (options.length > 0) bets.push({ label, options, settled: false, winnerIdx: null });
+  });
+
+  if (bets.length === 0) { toast("Add at least one bet with options.", "error"); return; }
+
+  await addDoc(collection(db, "custom_events"), {
+    title, subtitle,
+    bets,
+    locked: false,
+    archived: false,
+    createdAt: Date.now(),
+  });
+  toast("🎯 Event created!");
+  activeTab = "events";
+  render();
+}
+
+function showSlip() {
+  const existing = document.querySelector(".slip");
+  if (existing) existing.remove();
+  if (!selected) return;
+
+  const slip = document.createElement("div");
+  slip.className = "slip";
+  slip.innerHTML = `<div class="slip-inner">
+    <div class="slip-head">
+      <div><strong>${selected.label}</strong> ${fmtOdds(selected.odds)}<br>
+      <span style="font-size:11px;color:#888;">${selected.eventTitle} — ${selected.betLabel}</span></div>
+      <button class="slip-close" id="slip-close">✕</button>
+    </div>
+    <div class="slip-row">
+      <input type="number" id="slip-wager" placeholder="Wager amount" min="1" />
+      <button id="slip-place">Place Bet</button>
+    </div>
+    <div class="slip-calc" id="slip-calc"></div>
+    <div class="slip-err" id="slip-err"></div>
+  </div>`;
+  document.body.appendChild(slip);
+
+  const wagerInput = document.getElementById("slip-wager");
+  wagerInput.focus();
+  wagerInput.addEventListener("input", () => {
+    const amt = parseInt(wagerInput.value) || 0;
+    document.getElementById("slip-calc").textContent = amt > 0
+      ? `To win: ${calcPayout(amt, selected.odds).toLocaleString()}` : "";
+  });
+
+  document.getElementById("slip-close").addEventListener("click", () => { slip.remove(); selected = null; });
+
+  document.getElementById("slip-place").addEventListener("click", async () => {
+    const amt = parseInt(wagerInput.value);
+    if (!amt || amt < 1) { document.getElementById("slip-err").textContent = "Enter a valid wager."; return; }
+
+    // Check for existing bet on this exact option
+    const dupe = cBets.find(b => b.player === currentPlayer && b.eventId === selected.eventId &&
+      b.betIdx === selected.betIdx && b.optIdx === selected.optIdx && b.status === "pending");
+    if (dupe) { document.getElementById("slip-err").textContent = "You already bet this option."; return; }
+
+    const toWin = calcPayout(amt, selected.odds);
+    const cur = cBalances[currentPlayer] ?? 0;
+
+    await addDoc(collection(db, "custom_bets"), {
+      player: currentPlayer,
+      eventId: selected.eventId,
+      eventTitle: selected.eventTitle,
+      betIdx: selected.betIdx,
+      betLabel: selected.betLabel,
+      optIdx: selected.optIdx,
+      optionLabel: selected.label,
+      odds: selected.odds,
+      wager: amt,
+      toWin,
+      status: "pending",
+      createdAt: serverTimestamp(),
+    });
+    await setDoc(doc(db, "custom_balances", currentPlayer), { amount: cur - amt });
+
+    slip.remove();
+    selected = null;
+    toast("🎯 Bet placed!");
+  });
+}
+
+// ─────────── BOOT ───────────
+initFirebase();
+render();
+</script>
+</body>
+</html>
