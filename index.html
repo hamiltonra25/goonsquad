@@ -447,6 +447,7 @@ function renderLogin(app) {
         pinError = "";
         currentPlayer = pinEntry;
         pinEntry = "";
+        sessionStorage.setItem("gsPlayer", currentPlayer);
         ensureBalance(currentPlayer).then(() => { subscribe(); render(); });
       } else {
         pinError = "Wrong PIN — try again.";
@@ -968,6 +969,7 @@ function renderMain(app) {
   // ── Event listeners ──
   document.getElementById("logout-btn")?.addEventListener("click", () => {
     currentPlayer = null; selected = null; wagerVal = "";
+    sessionStorage.removeItem("gsPlayer");
     if(unsubBets) unsubBets(); if(unsubBalances) unsubBalances();
     render();
   });
@@ -1354,6 +1356,12 @@ function renderBetCard(bet, canSettle) {
 // ── Boot ──
 if (isConfigured()) {
   initFirebase();
+  // Restore login from sessionStorage (shared with custom.html)
+  const savedPlayer = sessionStorage.getItem("gsPlayer");
+  if (savedPlayer && PLAYERS.includes(savedPlayer)) {
+    currentPlayer = savedPlayer;
+    ensureBalance(currentPlayer).then(() => { subscribe(); render(); });
+  }
   render();
 } else {
   render();

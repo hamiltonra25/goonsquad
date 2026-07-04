@@ -379,6 +379,7 @@ function tryLogin() {
   if (!pinSel) { document.getElementById("login-err").textContent = "Select a player."; return; }
   if (pinVal !== PINS[pinSel]) { document.getElementById("login-err").textContent = "Wrong PIN."; return; }
   currentPlayer = pinSel; pinVal = "";
+  sessionStorage.setItem("gsPlayer", currentPlayer);
   ensureBalance(currentPlayer);
   subscribe();
   render();
@@ -395,6 +396,7 @@ let betRowCount = 0;
 function wireMain() {
   document.getElementById("logout")?.addEventListener("click", () => {
     currentPlayer = null;
+    sessionStorage.removeItem("gsPlayer");
     if (unsubEvents) unsubEvents(); if (unsubBets) unsubBets(); if (unsubBals) unsubBals();
     render();
   });
@@ -642,6 +644,13 @@ function showSlip() {
 
 // ─────────── BOOT ───────────
 initFirebase();
+// Restore login from sessionStorage (shared with index.html)
+const savedPlayer = sessionStorage.getItem("gsPlayer");
+if (savedPlayer && PLAYERS.includes(savedPlayer)) {
+  currentPlayer = savedPlayer;
+  ensureBalance(currentPlayer);
+  subscribe();
+}
 render();
 </script>
 </body>
