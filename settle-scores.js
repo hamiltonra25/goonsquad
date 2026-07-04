@@ -136,8 +136,17 @@ async function run() {
   for (const fixture of matches) {
     const apiHome   = fixture.homeTeam.name;
     const apiAway   = fixture.awayTeam.name;
-    const homeScore = fixture.score?.fullTime?.home;
-    const awayScore = fixture.score?.fullTime?.away;
+    const duration    = fixture.score?.duration || 'REGULAR';
+    // Always settle on 90-minute result (regularTime), not fullTime
+    // fullTime includes extra time goals for knockout matches
+    // regularTime is ONLY the 90-minute score
+    const scoreNode   = fixture.score?.regularTime || fixture.score?.fullTime;
+    const homeScore   = scoreNode?.home;
+    const awayScore   = scoreNode?.away;
+
+    if (duration !== 'REGULAR') {
+      console.log(`Note: ${apiHome} vs ${apiAway} went to ${duration} — settling on 90-min score (${homeScore}-${awayScore})`);
+    }
 
     if (homeScore === null || homeScore === undefined ||
         awayScore === null || awayScore === undefined) {
