@@ -208,12 +208,14 @@ function render() {
   html += `<div class="tabs">
     <button class="tab ${activeTab==="events"?"active":""}" data-tab="events">Events</button>
     <button class="tab ${activeTab==="mybets"?"active":""}" data-tab="mybets">My Bets</button>
+    <button class="tab ${activeTab==="allbets"?"active":""}" data-tab="allbets">All Bets</button>
     <button class="tab ${activeTab==="leaderboard"?"active":""}" data-tab="leaderboard">Leaderboard</button>
     ${currentPlayer === COMMISSIONER ? `<button class="tab comm ${activeTab==="manage"?"active":""}" data-tab="manage">Manage</button>` : ""}
   </div>`;
 
   if (activeTab === "events")      html += renderEvents();
   if (activeTab === "mybets")      html += renderMyBets();
+  if (activeTab === "allbets")     html += renderAllBets();
   if (activeTab === "leaderboard") html += renderLeaderboard();
   if (activeTab === "manage" && currentPlayer === COMMISSIONER) html += renderManage();
 
@@ -292,6 +294,39 @@ function renderMyBets() {
         <span class="status-tag ${stCls}">${stLbl}</span>
       </div>
     </div>`;
+  });
+  return html;
+}
+
+function renderAllBets() {
+  let html = "";
+  const all = cBets.filter(b => b.status === "pending")
+    .sort((a,b) => (b.createdAt?.seconds||0) - (a.createdAt?.seconds||0));
+
+  if (all.length === 0) return '<div style="text-align:center;color:#aaa;padding:3rem 0;font-size:14px;">No pending bets.</div>';
+
+  // Group by player for a clean overview
+  PLAYERS.forEach((p, pi) => {
+    const pb = all.filter(b => b.player === p);
+    if (pb.length === 0) return;
+    const risk = pb.reduce((s,b) => s + (b.wager||0), 0);
+    const pot  = pb.reduce((s,b) => s + (b.wager||0) + (b.toWin||0), 0);
+
+    html += `<div style="font-weight:700;font-size:13px;color:${COLORS[pi]};margin:14px 0 6px;border-bottom:2px solid ${COLORS[pi]};padding-bottom:4px;">
+      ${p} — ${pb.length} pending · ${risk.toLocaleString()} at risk · ${pot.toLocaleString()} potential
+    </div>`;
+
+    pb.forEach(b => {
+      html += `<div class="bet-card">
+        <div class="bet-card-head">
+          <div>
+            <div class="bet-card-title">${b.eventTitle} — ${b.betLabel}</div>
+            <div class="bet-card-sub">${b.optionLabel} (${fmtOdds(b.odds)}) · Wager ${b.wager.toLocaleString()} · To win ${b.toWin.toLocaleString()}</div>
+          </div>
+          <span class="status-tag st-pending">Pending</span>
+        </div>
+      </div>`;
+    });
   });
   return html;
 }
