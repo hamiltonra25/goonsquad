@@ -149,7 +149,12 @@ function toast(msg, type) {
 
 function fmtOdds(o) { return o > 0 ? "+" + o : "" + o; }
 function calcPayout(wager, odds) {
-  return odds > 0 ? Math.round(wager * odds / 100) : Math.round(wager * 100 / Math.abs(odds));
+  const raw = odds > 0 ? wager * odds / 100 : wager * 100 / Math.abs(odds);
+  return Math.round(raw * 100) / 100;  // exact to 2 decimals, no rounding up
+}
+
+function fmtShares(n) {
+  return Number(n).toLocaleString("en-US", { maximumFractionDigits: 2 });
 }
 
 function initFirebase() {
@@ -201,14 +206,15 @@ function render() {
 
   html += `<div class="bal-card">
     <div><div class="bal-label">Custom Balance</div>
-    <div class="bal-amount ${balCls}">${bal >= 0 ? "+" : ""}${bal.toLocaleString()}</div></div>
+    <div class="bal-amount ${balCls}">${bal >= 0 ? "+" : ""}${fmtShares(bal)}</div></div>
     <div style="font-size:11px;color:#aaa;">Starts at 0 · Can go negative</div>
   </div>`;
 
   html += `<div class="tabs">
     <button class="tab ${activeTab==="events"?"active":""}" data-tab="events">Events</button>
     <button class="tab ${activeTab==="mybets"?"active":""}" data-tab="mybets">My Bets</button>
-    <button class="tab ${activeTab==="allbets"?"active":""}" data-tab="allbets">All Bets</button>
+    <button class="tab ${activeTab==="allbets"?"active":""}" data-tab="allbets">Pending</button>
+    <button class="tab ${activeTab==="completed"?"active":""}" data-tab="completed">Completed</button>
     <button class="tab ${activeTab==="leaderboard"?"active":""}" data-tab="leaderboard">Leaderboard</button>
     ${currentPlayer === COMMISSIONER ? `<button class="tab comm ${activeTab==="manage"?"active":""}" data-tab="manage">Manage</button>` : ""}
   </div>`;
@@ -216,6 +222,8 @@ function render() {
   if (activeTab === "events")      html += renderEvents();
   if (activeTab === "mybets")      html += renderMyBets();
   if (activeTab === "allbets")     html += renderAllBets();
+  if (activeTab === "completed")   html += renderCompletedBets();
+  if (activeTab === "completed")   html += renderCompleted();
   if (activeTab === "leaderboard") html += renderLeaderboard();
   if (activeTab === "manage" && currentPlayer === COMMISSIONER) html += renderManage();
 
@@ -289,7 +297,7 @@ function renderMyBets() {
       <div class="bet-card-head">
         <div>
           <div class="bet-card-title">${b.eventTitle} — ${b.betLabel}</div>
-          <div class="bet-card-sub">${b.optionLabel} (${fmtOdds(b.odds)}) · Wager ${b.wager} · To win ${b.toWin}</div>
+          <div class="bet-card-sub">${b.optionLabel} (${fmtOdds(b.odds)}) · Wager ${fmtShares(b.wager)} · To win ${fmtShares(b.toWin)}</div>
         </div>
         <span class="status-tag ${stCls}">${stLbl}</span>
       </div>
@@ -313,7 +321,7 @@ function renderAllBets() {
     const pot  = pb.reduce((s,b) => s + (b.wager||0) + (b.toWin||0), 0);
 
     html += `<div style="font-weight:700;font-size:13px;color:${COLORS[pi]};margin:14px 0 6px;border-bottom:2px solid ${COLORS[pi]};padding-bottom:4px;">
-      ${p} — ${pb.length} pending · ${risk.toLocaleString()} at risk · ${pot.toLocaleString()} potential
+      ${p} — ${pb.length} pending · ${fmtShares(risk)} at risk · ${fmtShares(pot)} potential
     </div>`;
 
     pb.forEach(b => {
@@ -321,9 +329,85 @@ function renderAllBets() {
         <div class="bet-card-head">
           <div>
             <div class="bet-card-title">${b.eventTitle} — ${b.betLabel}</div>
-            <div class="bet-card-sub">${b.optionLabel} (${fmtOdds(b.odds)}) · Wager ${b.wager.toLocaleString()} · To win ${b.toWin.toLocaleString()}</div>
+            <div class="bet-card-sub">${b.optionLabel} (${fmtOdds(b.odds)}) · Wager ${fmtShares(b.wager)} · To win ${fmtShares(b.toWin)}</div>
           </div>
           <span class="status-tag st-pending">Pending</span>
+        </div>
+      </div>`;
+    });
+  });
+  return html;
+}
+
+function renderCompletedBets() {
+  let html = "";
+  const done = cBets.filter(b => ["won","lost","push"].includes(b.status))
+    .sort((a,b) => (b.createdAt?.seconds||0) - (a.createdAt?.seconds||0));
+
+  if (done.length === 0) return '<div style="text-align:center;color:#aaa;padding:3rem 0;font-size:14px;">No completed bets yet.</div>';
+
+  PLAYERS.forEach((p, pi) => {
+    const pb = done.filter(b => b.player === p);
+    if (pb.length === 0) return;
+    const won  = pb.filter(b => b.status === "won");
+    const lost = pb.filter(b => b.status === "lost");
+    const push = pb.filter(b => b.status === "push");
+    const net  = won.reduce((s,b) => s + (b.toWin||0), 0) - lost.reduce((s,b) => s + (b.wager||0), 0);
+    const netStr = (net >= 0 ? "+" : "") + fmtShares(net);
+    const netColor = net >= 0 ? "#3B6D11" : "#A32D2D";
+
+    html += `<div style="font-weight:700;font-size:13px;color:${COLORS[pi]};margin:14px 0 6px;border-bottom:2px solid ${COLORS[pi]};padding-bottom:4px;">
+      ${p} — ${won.length}-${lost.length}-${push.length} · <span style="color:${netColor};">${netStr} net</span>
+    </div>`;
+
+    pb.forEach(b => {
+      const stCls = { won:"st-won", lost:"st-lost", push:"st-push" }[b.status];
+      const stLbl = { won:"Won ✓", lost:"Lost ✗", push:"Push ~" }[b.status];
+      html += `<div class="bet-card">
+        <div class="bet-card-head">
+          <div>
+            <div class="bet-card-title">${b.eventTitle} — ${b.betLabel}</div>
+            <div class="bet-card-sub">${b.optionLabel} (${fmtOdds(b.odds)}) · Wager ${fmtShares(b.wager)} · To win ${fmtShares(b.toWin)}</div>
+          </div>
+          <span class="status-tag ${stCls}">${stLbl}</span>
+        </div>
+      </div>`;
+    });
+  });
+  return html;
+}
+
+function renderCompleted() {
+  let html = "";
+  const done = cBets.filter(b => ["won","lost","push"].includes(b.status))
+    .sort((a,b) => (b.createdAt?.seconds||0) - (a.createdAt?.seconds||0));
+
+  if (done.length === 0) return '<div style="text-align:center;color:#aaa;padding:3rem 0;font-size:14px;">No completed bets yet.</div>';
+
+  PLAYERS.forEach((p, pi) => {
+    const pb = done.filter(b => b.player === p);
+    if (pb.length === 0) return;
+    const won  = pb.filter(b => b.status === "won");
+    const lost = pb.filter(b => b.status === "lost");
+    const push = pb.filter(b => b.status === "push");
+    const net  = won.reduce((s,b) => s + (b.toWin||0), 0) - lost.reduce((s,b) => s + (b.wager||0), 0);
+    const netStr = (net >= 0 ? "+" : "") + fmtShares(net);
+    const netColor = net >= 0 ? "#3B6D11" : "#A32D2D";
+
+    html += `<div style="font-weight:700;font-size:13px;color:${COLORS[pi]};margin:14px 0 6px;border-bottom:2px solid ${COLORS[pi]};padding-bottom:4px;">
+      ${p} — ${won.length}-${lost.length}-${push.length} · <span style="color:${netColor};">${netStr}</span>
+    </div>`;
+
+    pb.forEach(b => {
+      const stCls = { won:"st-won", lost:"st-lost", push:"st-push" }[b.status];
+      const stLbl = { won:"Won ✓", lost:"Lost ✗", push:"Push ~" }[b.status];
+      html += `<div class="bet-card">
+        <div class="bet-card-head">
+          <div>
+            <div class="bet-card-title">${b.eventTitle} — ${b.betLabel}</div>
+            <div class="bet-card-sub">${b.optionLabel} (${fmtOdds(b.odds)}) · Wager ${fmtShares(b.wager)} · To win ${fmtShares(b.toWin)}</div>
+          </div>
+          <span class="status-tag ${stCls}">${stLbl}</span>
         </div>
       </div>`;
     });
@@ -351,7 +435,7 @@ function renderLeaderboard() {
       <div class="lb-rank">#${rank+1}</div>
       <div class="lb-avatar" style="background:${BGS[e.idx]};color:${COLORS[e.idx]};">${INITIALS[e.idx]}</div>
       <div class="lb-name">${e.player}<div class="lb-rec">${e.won}-${e.lost}-${e.push}${e.pending ? " · " + e.pending + " pending" : ""}</div></div>
-      <div class="lb-bal ${balCls}">${e.bal >= 0 ? "+" : ""}${e.bal.toLocaleString()}</div>
+      <div class="lb-bal ${balCls}">${e.bal >= 0 ? "+" : ""}${fmtShares(e.bal)}</div>
     </div>`;
   });
   return html;
@@ -775,7 +859,7 @@ function showSlip() {
   wagerInput.addEventListener("input", () => {
     const amt = parseInt(wagerInput.value) || 0;
     document.getElementById("slip-calc").textContent = amt > 0
-      ? `To win: ${calcPayout(amt, selected.odds).toLocaleString()}` : "";
+      ? `To win: ${fmtShares(calcPayout(amt, selected.odds))}` : "";
   });
 
   document.getElementById("slip-close").addEventListener("click", () => { slip.remove(); selected = null; });
