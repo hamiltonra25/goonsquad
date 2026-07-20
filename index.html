@@ -1,196 +1,111 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>WC2026 Fantasy Gambling</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Goonsquad Bet</title>
 <style>
-  .page-switch { display:flex; background:#e8e8e6; border-radius:10px; padding:3px; margin:10px auto 4px; max-width:420px; }
-  .page-switch a { flex:1; text-align:center; padding:8px; border-radius:8px; font-size:13px; font-weight:600; text-decoration:none; color:#666; }
-  .page-switch a.active { background:#fff; color:#1a1a1a; box-shadow:0 1px 3px rgba(0,0,0,0.1); }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background:#f4f4f2; color:#1a1a1a; padding-bottom:60px; }
+  .container { max-width:760px; margin:0 auto; padding:12px; }
 
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f5f5f3; color: #1a1a1a; min-height: 100vh; }
-  #app { max-width: 680px; margin: 0 auto; padding: 16px 12px 40px; }
+  /* Login */
+  .login-box { max-width:320px; margin:60px auto; text-align:center; }
+  .login-title { font-size:20px; font-weight:700; margin-bottom:20px; }
+  .player-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:16px; }
+  .player-btn { padding:16px; border:2px solid #ddd; border-radius:12px; background:#fff; font-size:16px; font-weight:600; cursor:pointer; }
+  .player-btn.sel { border-color:#185FA5; background:#E6F1FB; }
+  .pin-input { width:100%; padding:12px; font-size:20px; text-align:center; border:1px solid #ddd; border-radius:10px; margin-bottom:10px; letter-spacing:8px; }
+  .login-go { width:100%; padding:12px; background:#185FA5; color:#fff; border:none; border-radius:10px; font-size:15px; font-weight:600; cursor:pointer; }
+  .login-err { color:#A32D2D; font-size:13px; margin-top:8px; }
 
-  /* ── Login screen ── */
-  #login-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 80vh; gap: 12px; }
-  #login-screen h1 { font-size: 20px; font-weight: 600; margin-bottom: 4px; }
-  #login-screen p { font-size: 13px; color: #666; margin-bottom: 8px; }
-  .login-btn { width: 220px; padding: 11px 0; border-radius: 10px; border: 1.5px solid #ccc; background: #fff; font-size: 15px; font-weight: 500; cursor: pointer; transition: border-color .15s, background .15s; }
-  .login-btn:hover { background: #f0f0f0; }
+  /* Header */
+  .top { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+  .top-name { font-weight:700; font-size:17px; color:#185FA5; }
+  .top-switch { font-size:13px; color:#888; cursor:pointer; background:none; border:none; }
 
-  /* ── Top bar ── */
-  #topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
-  #topbar .player-name { font-size: 15px; font-weight: 600; }
-  #topbar .clock { font-size: 11px; color: #888; }
-  #topbar .logout-btn { font-size: 12px; color: #888; background: none; border: none; cursor: pointer; padding: 4px 8px; border-radius: 6px; }
-  #topbar .logout-btn:hover { background: #eee; }
+  /* Balance */
+  .bal-card { background:#fff; border-radius:12px; padding:14px 16px; margin-bottom:14px; display:flex; justify-content:space-between; align-items:center; }
+  .bal-label { font-size:10px; font-weight:600; color:#888; text-transform:uppercase; }
+  .bal-amount { font-size:26px; font-weight:700; }
+  .bal-pos { color:#3B6D11; }
+  .bal-neg { color:#A32D2D; }
 
-  /* ── Stats row ── */
-  .stats-row { display: flex; flex-direction: column; gap: 7px; margin-bottom: 14px; }
-  .stats-row-inner { display: flex; gap: 7px; }
-  .stat-card { background: #ebebeb; border-radius: 8px; padding: 9px 12px; flex: 1; min-width: 0; }
-  .stat-card-wide { background: #ebebeb; border-radius: 8px; padding: 9px 12px; flex: 1; min-width: 0; }
-  .stat-label { font-size: 9px; color: #888; margin-bottom: 2px; text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600; }
-  .stat-value { font-size: 16px; font-weight: 700; }
-  .stat-sub { font-size: 10px; color: #aaa; margin-top: 1px; }
-  .stat-cols { display: flex; gap: 16px; }
-  .stat-col { text-align: left; }
-  .stat-col-label { font-size: 10px; font-weight: 600; margin-bottom: 2px; }
-  .stat-col-value { font-size: 15px; font-weight: 700; }
+  /* Tabs */
+  .tabs { display:flex; gap:4px; border-bottom:1px solid #ddd; margin-bottom:14px; overflow-x:auto; }
+  .tab { padding:8px 14px; font-size:13px; font-weight:600; color:#888; background:none; border:none; border-bottom:2px solid transparent; cursor:pointer; white-space:nowrap; }
+  .tab.active { color:#1a1a1a; border-bottom-color:#1a1a1a; }
+  .tab.comm { color:#993C1D; }
 
-  /* ── Tabs ── */
-  .tabs { display: flex; border-bottom: 1px solid #ddd; margin-bottom: 14px; }
-  .tab-btn { background: none; border: none; cursor: pointer; padding: 7px 15px; font-size: 13px; color: #888; border-bottom: 2px solid transparent; margin-bottom: -1px; font-weight: 400; }
-  .tab-btn.active { color: #1a1a1a; font-weight: 500; border-bottom-color: #1a1a1a; }
+  /* Event cards */
+  .event-card { background:#fff; border-radius:12px; padding:14px 16px; margin-bottom:12px; }
+  .event-title { font-weight:700; font-size:15px; }
+  .event-sub { font-size:11px; color:#888; margin-bottom:10px; }
+  .bet-block { border-top:1px solid #f0f0f0; padding:10px 0; }
+  .bet-label { font-size:13px; font-weight:600; margin-bottom:6px; }
+  .opt-row { display:flex; gap:6px; flex-wrap:wrap; }
+  .opt-pill { background:#f0f4fb; border:1px solid #c8d8f0; border-radius:18px; padding:5px 14px; font-size:13px; font-weight:600; color:#185FA5; cursor:pointer; }
+  .opt-pill.mine { background:#185FA5; color:#fff; }
+  .opt-pill.won  { background:#EAF3DE; color:#3B6D11; border-color:#9CC97A; }
+  .opt-pill.lost { background:#f8f8f8; color:#bbb; border-color:#e5e5e5; text-decoration:line-through; }
+  .opt-pill.locked { cursor:default; opacity:0.85; }
 
-  /* ── Bet type pills ── */
-  .bet-type-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
-  .bt-pill { background: none; border: 1px solid #ddd; border-radius: 8px; padding: 4px 10px; font-size: 12px; cursor: pointer; color: #666; }
-  .bt-pill.active { background: #fff; border-color: #999; color: #1a1a1a; font-weight: 500; }
+  /* Bet slip */
+  .slip { position:fixed; bottom:0; left:0; right:0; background:#fff; border-top:1px solid #ddd; padding:12px 16px; box-shadow:0 -4px 12px rgba(0,0,0,0.08); z-index:100; }
+  .slip-inner { max-width:760px; margin:0 auto; }
+  .slip-head { display:flex; justify-content:space-between; font-size:13px; margin-bottom:8px; }
+  .slip-close { background:none; border:none; color:#888; cursor:pointer; font-size:16px; }
+  .slip-row { display:flex; gap:8px; }
+  .slip-row input { flex:1; padding:10px; border:1px solid #ddd; border-radius:8px; font-size:15px; }
+  .slip-row button { padding:10px 22px; background:#185FA5; color:#fff; border:none; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; }
+  .slip-calc { font-size:12px; color:#3B6D11; margin-top:6px; font-weight:600; }
+  .slip-err { font-size:12px; color:#A32D2D; margin-top:6px; }
 
-  /* ── Odds status table ── */
-  .odds-status-bar { background: var(--color-background-secondary); border-radius: 8px; padding: 8px 12px; margin-bottom: 14px; }
-  .odds-status-title { font-size: 10px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
-  .odds-status-grid { display: flex; gap: 4px; flex-wrap: wrap; }
-  .odds-slot { display: flex; align-items: center; gap: 4px; font-size: 11px; padding: 3px 8px; border-radius: 20px; white-space: nowrap; }
-  .odds-slot.hit { background: #EAF3DE; color: #3B6D11; }
-  .odds-slot.pending { background: #FFF8E6; color: #BA7517; }
-  .odds-slot.missed { background: #FCEBEB; color: #A32D2D; }
+  /* Commissioner forms */
+  .comm-form { background:#fff; border:1px dashed #ccc; border-radius:12px; padding:16px; margin-bottom:14px; }
+  .comm-form label { font-size:11px; font-weight:600; color:#888; display:block; margin:8px 0 3px; }
+  .comm-form input { width:100%; padding:8px 10px; border:1px solid #ddd; border-radius:7px; font-size:13px; }
+  .comm-add-bet { margin-top:12px; padding:10px; background:#f8f8f8; border-radius:8px; }
+  .comm-opt-row { display:flex; gap:6px; margin-top:6px; }
+  .comm-opt-row input { flex:1; }
+  .btn-blue { background:#185FA5; color:#fff; border:none; border-radius:8px; padding:9px 18px; font-size:13px; font-weight:600; cursor:pointer; }
+  .btn-green { background:#3B6D11; color:#fff; border:none; border-radius:8px; padding:6px 14px; font-size:12px; font-weight:600; cursor:pointer; }
+  .btn-orange { background:#C86A00; color:#fff; border:none; border-radius:8px; padding:6px 14px; font-size:12px; font-weight:600; cursor:pointer; }
+  .btn-gray { background:#eee; color:#666; border:none; border-radius:8px; padding:6px 14px; font-size:12px; cursor:pointer; }
+  .btn-red { background:#A32D2D; color:#fff; border:none; border-radius:8px; padding:6px 14px; font-size:12px; font-weight:600; cursor:pointer; }
 
-  /* ── Date dividers ── */
-  .date-divider { font-size: 11px; font-weight: 600; color: #bbb; text-transform: uppercase; letter-spacing: 0.06em; padding: 10px 2px 4px; margin-top: 4px; border-top: 1px solid #ebebeb; }
-  .date-divider:first-child { border-top: none; margin-top: 0; padding-top: 2px; }
+  /* Leaderboard */
+  .lb-row { background:#fff; border-radius:12px; padding:12px 16px; margin-bottom:8px; display:flex; align-items:center; gap:12px; }
+  .lb-rank { font-size:15px; font-weight:600; color:#ccc; min-width:26px; }
+  .lb-avatar { width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:600; font-size:12px; }
+  .lb-name { flex:1; font-weight:700; font-size:14px; }
+  .lb-rec { font-size:11px; color:#888; }
+  .lb-bal { font-size:19px; font-weight:700; }
 
-  /* ── Match rows ── */
-  .match-row { display: flex; align-items: center; gap: 8px; background: #fff; border: 1px solid #e8e8e8; border-radius: 9px; padding: 7px 9px; margin-bottom: 5px; transition: opacity .2s; }
-  .match-row.locked { background: #f0f0f0; opacity: 0.55; }
-  .match-row.selected { border-color: #185FA5; }
-  .match-info { flex: 0 0 168px; min-width: 0; }
-  .match-name { font-size: 13px; font-weight: 500; line-height: 1.3; }
-  .match-meta { font-size: 10px; color: #999; margin-top: 2px; line-height: 1.5; }
-  .match-lock { font-size: 10px; font-weight: 500; margin-top: 2px; }
-  .match-lock.soon { color: #BA7517; }
-  .match-lock.ok { color: #3B6D11; }
-  .match-lock.locked { color: #A32D2D; }
-  .odds-pills { flex: 1; display: flex; gap: 4px; justify-content: flex-end; }
-  .odds-pill { flex: 1 1 0; min-width: 0; background: #fff; border: 1px solid #e8e8e8; border-radius: 6px; padding: 5px 2px; cursor: pointer; text-align: center; }
-  .odds-pill.active { background: #E6F1FB; border-color: #185FA5; }
-  .odds-pill.disabled { cursor: default; background: #f5f5f5; }
-  .odds-pill-label { font-size: 9px; color: #aaa; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.2; margin-bottom: 1px; }
-  .odds-pill-val { font-size: 13px; font-weight: 600; line-height: 1.2; }
-  .odds-pill-val.pos { color: #3B6D11; }
-  .odds-pill-val.neg { color: #993C1D; }
+  /* Bet cards (my bets) */
+  .bet-card { background:#fff; border-radius:10px; padding:12px 14px; margin-bottom:8px; }
+  .bet-card-head { display:flex; justify-content:space-between; align-items:center; }
+  .bet-card-title { font-size:13px; font-weight:600; }
+  .bet-card-sub { font-size:11px; color:#888; margin-top:2px; }
+  .status-tag { font-size:11px; font-weight:700; padding:3px 10px; border-radius:12px; }
+  .st-pending { background:#E6F1FB; color:#185FA5; }
+  .st-won  { background:#EAF3DE; color:#3B6D11; }
+  .st-lost { background:#FCEBEB; color:#A32D2D; }
+  .st-push { background:#FFF4E0; color:#C86A00; }
 
-  /* ── Wager slip ── */
-  .wager-slip { background: #f0f4fb; border-left: 3px solid #185FA5; border-radius: 10px; padding: 12px 14px; margin-bottom: 14px; }
-  .slip-desc { font-size: 12px; color: #555; margin-bottom: 8px; }
-  .slip-desc strong { color: #1a1a1a; }
-  .slip-desc .pick { color: #185FA5; font-weight: 600; }
-  .slip-inputs { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 6px; }
-  .slip-inputs input { flex: 1; min-width: 130px; padding: 7px 10px; border: 1px solid #ccc; border-radius: 7px; font-size: 13px; }
-  .slip-bal { font-size: 12px; color: #888; white-space: nowrap; }
-  .slip-calcs { display: flex; gap: 14px; font-size: 12px; color: #777; margin-bottom: 6px; flex-wrap: wrap; }
-  .slip-calcs strong { color: #1a1a1a; }
-  .slip-calcs .green { color: #3B6D11; }
-  .slip-error { font-size: 12px; color: #A32D2D; margin-bottom: 6px; }
-  .place-btn { background: #185FA5; color: #fff; border: none; border-radius: 8px; padding: 7px 18px; cursor: pointer; font-weight: 600; font-size: 13px; }
-  .place-btn:disabled { background: #aaa; cursor: default; }
-
-  /* ── Bets list ── */
-  .bet-card { background: #fff; border: 1px solid #e8e8e8; border-radius: 10px; padding: 11px 13px; margin-bottom: 9px; }
-  .bet-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 5px; }
-  .bet-title { font-size: 13px; font-weight: 500; }
-  .bet-sub { font-size: 11px; color: #888; margin-top: 2px; }
-  .status-badge { font-size: 11px; font-weight: 500; padding: 3px 8px; border-radius: 6px; white-space: nowrap; }
-  .status-pending { background: #F1EFE8; color: #5F5E5A; }
-  .status-won { background: #EAF3DE; color: #3B6D11; }
-  .status-lost { background: #FCEBEB; color: #A32D2D; }
-  .status-push { background: #EEEDFE; color: #534AB7; }
-  .bet-amounts { display: flex; gap: 14px; font-size: 12px; color: #888; margin-bottom: 7px; }
-  .bet-amounts strong { color: #1a1a1a; }
-  .settle-row { display: flex; gap: 7px; align-items: center; }
-  .settle-label { font-size: 11px; color: #888; }
-  .settle-btn { border: none; border-radius: 6px; padding: 3px 11px; cursor: pointer; font-size: 11px; font-weight: 500; }
-  .settle-won { background: #EAF3DE; color: #3B6D11; }
-  .settle-delete { background: #fff; color: #aaa; border: 1px solid #ddd !important; margin-left: auto; }
-  .settle-lost { background: #FCEBEB; color: #A32D2D; }
-  .settle-push { background: #EEEDFE; color: #534AB7; }
-
-  /* ── Leaderboard ── */
-  .lb-row { background: #fff; border: 1px solid #e8e8e8; border-radius: 10px; padding: 11px 15px; display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
-  .lb-rank { font-size: 18px; font-weight: 600; color: #ccc; min-width: 26px; }
-  .lb-avatar { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 12px; flex-shrink: 0; }
-  .lb-name { font-weight: 500; font-size: 15px; }
-  .lb-sub { font-size: 11px; color: #888; margin-top: 1px; }
-  .lb-right { text-align: right; margin-left: auto; }
-  .lb-balance { font-size: 17px; font-weight: 600; }
-  .lb-change { font-size: 11px; margin-top: 1px; }
-  .lb-change.up { color: #3B6D11; }
-  .lb-change.down { color: #A32D2D; }
-  .lb-change.flat { color: #888; }
-  .payout-note { margin-top: 14px; background: #ebebeb; border-radius: 8px; padding: 11px 14px; font-size: 12px; color: #777; }
-  .payout-note strong { color: #1a1a1a; }
-
-  /* ── Commissioner tab ── */
-  .comm-match { background: #fff; border: 1px solid #e8e8e8; border-radius: 10px; padding: 13px 15px; margin-bottom: 10px; }
-  .comm-match.settled { opacity: 0.6; }
-  .comm-match-title { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
-  .comm-match-meta  { font-size: 11px; color: #999; margin-bottom: 10px; }
-  .comm-score-row   { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-  .comm-score-row label { font-size: 12px; color: #555; white-space: nowrap; }
-  .comm-score-input { width: 52px; padding: 6px 8px; border: 1px solid #ccc; border-radius: 7px; font-size: 16px; font-weight: 600; text-align: center; }
-  .comm-dash { font-size: 18px; color: #ccc; font-weight: 300; }
-  .comm-submit { background: #185FA5; color: #fff; border: none; border-radius: 8px; padding: 7px 16px; cursor: pointer; font-size: 13px; font-weight: 600; white-space: nowrap; }
-  .comm-submit:disabled { background: #aaa; cursor: default; }
-  .comm-result-badge { font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 20px; white-space: nowrap; }
-  .comm-settled-score { font-size: 13px; font-weight: 600; color: #3B6D11; }
-  .comm-preview { font-size: 11px; color: #888; margin-top: 8px; line-height: 1.7; }
-  .comm-preview strong { color: #1a1a1a; }
-
-  /* ── Pending bets under match row ── */
-  .match-pending-bets { display: flex; flex-wrap: wrap; gap: 5px; padding: 4px 9px 7px; margin-top: -3px; }
-  .pending-bet-tag { font-size: 10px; font-weight: 500; padding: 2px 8px; border-radius: 20px; white-space: nowrap; }
-
-  /* ── Toast ── */
-  #toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 500; display: none; z-index: 999; white-space: nowrap; box-shadow: 0 2px 12px rgba(0,0,0,.15); }
-  #toast.success { background: #EAF3DE; color: #3B6D11; }
-  #toast.error   { background: #FCEBEB; color: #A32D2D; }
-  #toast.info    { background: #EEEDFE; color: #534AB7; }
-
-  /* ── Loading ── */
-  #loading { display: flex; align-items: center; justify-content: center; min-height: 80vh; font-size: 14px; color: #888; }
-
-  /* ── Config screen ── */
-  #config-screen { background: #fff; border: 1px solid #e8e8e8; border-radius: 12px; padding: 20px; margin-top: 20px; }
-  #config-screen h2 { font-size: 16px; font-weight: 600; margin-bottom: 12px; }
-  #config-screen label { font-size: 12px; color: #666; display: block; margin-bottom: 4px; }
-  #config-screen input { width: 100%; padding: 8px 10px; border: 1px solid #ccc; border-radius: 7px; font-size: 13px; margin-bottom: 10px; }
-  #config-screen .save-btn { background: #185FA5; color: #fff; border: none; border-radius: 8px; padding: 9px 20px; cursor: pointer; font-weight: 600; font-size: 13px; }
-  #config-screen p { font-size: 12px; color: #888; margin-bottom: 12px; line-height: 1.5; }
-  #config-screen a { color: #185FA5; }
-  #config-screen .field-row { display: flex; gap: 8px; }
-  #config-screen .field-row input { flex: 1; }
+  .toast { position:fixed; top:14px; left:50%; transform:translateX(-50%); background:#1a1a1a; color:#fff; padding:10px 20px; border-radius:24px; font-size:13px; z-index:999; opacity:0; transition:opacity .25s; pointer-events:none; }
+  .toast.show { opacity:1; }
+  .toast.error { background:#A32D2D; }
 </style>
 </head>
 <body>
-<div class="page-switch">
-  <a href="index.html" class="active">⚽ World Cup</a>
-  <a href="custom.html">🎯 Custom Bets</a>
-</div>
-<div id="app">
-  <div id="loading">Loading…</div>
-</div>
-<div id="toast"></div>
+<div class="container" id="app"></div>
+<div class="toast" id="toast"></div>
 
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection, addDoc, updateDoc, deleteDoc, serverTimestamp, query, where } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, collection, doc, getDocs, getDoc, setDoc, addDoc, updateDoc, deleteDoc, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-// ─────────────────────────────────────────────
-// FIREBASE CONFIG — fill in your own values below
-// ─────────────────────────────────────────────
 const FIREBASE_CONFIG = {
   apiKey:            "AIzaSyDpnbCag54EDtOrwkocmIummeZJ9vpr00k",
   authDomain:        "goonsquad-futbol.firebaseapp.com",
@@ -199,1173 +114,789 @@ const FIREBASE_CONFIG = {
   messagingSenderId: "518391194891",
   appId:             "1:518391194891:web:d16cead641b9e3c1a0ae0e",
 };
-// ─────────────────────────────────────────────
 
-const INITIAL_SHARES = 3500;
-const PLAYERS = ["R3", "Une", "AK", "Brez"];
-const PLAYER_COLORS = ["#185FA5", "#3B6D11", "#993C1D", "#534AB7"];
-const PLAYER_BG     = ["#E6F1FB", "#EAF3DE", "#FAECE7", "#EEEDFE"];
-const PLAYER_INITIALS = ["R3", "UN", "AK", "BR"];
+const PLAYERS  = ["R3", "Une", "AK", "Brez"];
+const PINS     = { R3:"4751", Une:"8392", AK:"6047", Brez:"2815" };
+const COLORS   = ["#185FA5", "#3B6D11", "#993C1D", "#534AB7"];
+const BGS      = ["#E6F1FB", "#EAF3DE", "#FAECE7", "#EEEDFE"];
+const INITIALS = ["R3", "UN", "AK", "BR"];
+const COMMISSIONER = "R3";
 
-// MATCHES is populated from Firebase (written by GitHub Actions fetch-odds.js)
-let MATCHES = [];
+let db;
+let currentPlayer = null;
+let activeTab = "events";
+let events = [];       // custom_events
+let cBets = [];        // custom_bets
+let cBalances = {};    // custom_balances
+let selected = null;   // { eventId, betId, optIdx, label, odds, eventTitle, betLabel }
+let pinSel = null, pinVal = "";
+let editingEventId = null;
+let unsubEvents = null, unsubBets = null, unsubBals = null;
 
-const BET_TYPES = ["Moneyline","Tie No Bet","Total Goals","Double Chance"];
+const app = document.getElementById("app");
 
-function fmt(o) { return o > 0 ? `+${o}` : `${o}`; }
-function calcPayout(w, o) { return o > 0 ? Math.round(w*(o/100)) : Math.round(w*(100/Math.abs(o))); }
-function isLocked(m, now) { return now >= m.kickoffUTC; }
-function countdown(m, now) {
-  const diff = m.kickoffUTC - now; if (diff<=0) return null;
-  const mins=Math.floor(diff/60000), h=Math.floor(mins/60), mo=mins%60;
-  if(h>48){const d=Math.floor(h/24);return `${d}d ${h%24}h`;}
-  return h>0 ? `${h}h ${mo}m` : `${mo}m`;
-}
-function getOdds(m, bt) {
-  if(bt==="Moneyline") return [{key:"home_win",label:m.home,odds:m.moneyline.home},{key:"draw",label:"Draw",odds:m.moneyline.draw},{key:"away_win",label:m.away,odds:m.moneyline.away}];
-  if(bt==="Tie No Bet") return [{key:"tnb_home",label:m.home,odds:m.tnb.home},{key:"tnb_away",label:m.away,odds:m.tnb.away}];
-  if(bt==="Total Goals") {
-    try {
-      if (!m.total || !m.total.line || !m.total.over || !m.total.under) return [];
-      if (m.total.over === -110 && m.total.under === -110 && m.total.line === 2.5) return [];
-      return [{key:"over",label:`O ${m.total.line}`,odds:m.total.over},{key:"under",label:`U ${m.total.line}`,odds:m.total.under}];
-    } catch(e) { return []; }
-  }
-
-  if(bt==="Double Chance") return [{key:"dc_1x",label:`${m.home}/Draw`,odds:m.dc.homeOrDraw},{key:"dc_x2",label:`${m.away}/Draw`,odds:m.dc.awayOrDraw},{key:"dc_12",label:`${m.home}/${m.away}`,odds:m.dc.homeOrAway}];
-  return [];
-}
-function formatCT(ts) {
-  return new Date(ts).toLocaleTimeString("en-US",{timeZone:"America/Chicago",hour:"numeric",minute:"2-digit",hour12:true})+" CT";
+function toast(msg, type) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.className = "toast show" + (type === "error" ? " error" : "");
+  setTimeout(() => { t.className = "toast"; }, 2600);
 }
 
-// ── State ──
-let db, currentPlayer = null, balances = {}, bets = [], betType = "Moneyline", scores = {}, oddsLastUpdated = null, oddsLoaded = false, scoresLastUpdated = null;
-let selected = null, wagerVal = "", wagerError = "", activeTab = "wager", now = Date.now();
-let unsubBets = null, unsubBalances = null;
-let configMode = false;
-let pinEntry = "";   // which player is entering their PIN
-let pinError  = "";  // wrong PIN message
-
-// 4-digit PINs — change these before sharing the file
-const PINS = {
-  "R3":   "4751",
-  "Une":  "8392",
-  "AK":   "6047",
-  "Brez": "2815",
-};
-
-// ── Toast ──
-let toastTimer;
-function toast(msg, type="success") {
-  const el = document.getElementById("toast");
-  el.textContent = msg; el.className = type; el.style.display = "block";
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { el.style.display="none"; }, 3000);
+function fmtOdds(o) { return o > 0 ? "+" + o : "" + o; }
+function calcPayout(wager, odds) {
+  const raw = odds > 0 ? wager * odds / 100 : wager * 100 / Math.abs(odds);
+  return Math.round(raw * 100) / 100;  // exact to 2 decimals, no rounding up
 }
 
-// ── Detect if Firebase is configured ──
-function isConfigured() {
-  return !FIREBASE_CONFIG.apiKey.startsWith("REPLACE");
+function fmtShares(n) {
+  return Number(n).toLocaleString("en-US", { maximumFractionDigits: 2 });
 }
 
-// ── Firebase init ──
 function initFirebase() {
   const fbApp = initializeApp(FIREBASE_CONFIG);
   db = getFirestore(fbApp);
 }
 
-// ── Subscribe to real-time data ──
 function subscribe() {
-  if (unsubBets) unsubBets();
-  if (unsubBalances) unsubBalances();
-
-  // Balances — one doc per player
-  PLAYERS.forEach(p => {
-    onSnapshot(doc(db, "balances", p), snap => {
-      if (snap.exists()) { balances[p] = snap.data().amount; }
-      else { balances[p] = INITIAL_SHARES; }
-      render();
-    });
-  });
-
-  // Live odds from Firebase (written by GitHub Actions every 6h)
-  onSnapshot(doc(db, "config", "odds"), snap => {
-    if (snap.exists()) {
-      const data = snap.data();
-      if (data.matches && Array.isArray(data.matches)) {
-        MATCHES = data.matches.sort((a, b) => a.kickoffUTC - b.kickoffUTC);
-        oddsLastUpdated = data.fetchedAt || null;
-      }
-    }
+  unsubEvents = onSnapshot(collection(db, "custom_events"), snap => {
+    events = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    events.sort((a,b) => (b.createdAt||0) - (a.createdAt||0));
     render();
   });
-
-  // Live matches from Firebase (written by GitHub Action)
-  onSnapshot(collection(db, "matches"), snap => {
-    if (snap.empty) return;
-    MATCHES = snap.docs.map(d => d.data()).sort((a,b) => a.kickoffUTC - b.kickoffUTC);
-    oddsLoaded = true;
+  unsubBets = onSnapshot(collection(db, "custom_bets"), snap => {
+    cBets = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     render();
   });
-
-  // Odds metadata (last updated time)
-  onSnapshot(doc(db, "meta", "odds"), snap => {
-    if (snap.exists()) {
-      oddsLastUpdated = snap.data().lastUpdated;
-      render();
-    }
-  });
-
-  // Scores (commissioner entries)
-  onSnapshot(collection(db, "scores"), snap => {
-    snap.docs.forEach(d => { scores[d.id] = d.data(); });
-    render();
-  });
-
-  // All bets
-  unsubBets = onSnapshot(collection(db, "bets"), snap => {
-    bets = snap.docs.map(d => ({ id: d.id, ...d.data() }))
-      .sort((a,b) => (b.createdAt?.seconds||0) - (a.createdAt?.seconds||0));
+  unsubBals = onSnapshot(collection(db, "custom_balances"), snap => {
+    cBalances = {};
+    snap.docs.forEach(d => { cBalances[d.id] = d.data().amount ?? 0; });
     render();
   });
 }
 
-async function ensureBalance(player) {
-  const ref = doc(db, "balances", player);
-  const snap = await getDoc(ref);
-  if (!snap.exists()) await setDoc(ref, { amount: INITIAL_SHARES });
-}
-
-async function placeBet() {
-  if (!selected) { wagerError = "Select an outcome first."; render(); return; }
-  const match = MATCHES.find(m => m.id === selected.matchId);
-  if (isLocked(match, now)) { wagerError = "Betting is locked — match has started."; render(); return; }
-  const amount = parseInt(wagerVal, 10);
-  if (!amount || amount < 10) { wagerError = "Minimum wager is 10 shares."; render(); return; }
-  const bal = balances[currentPlayer] ?? INITIAL_SHARES;
-  if (amount > bal) { wagerError = "Not enough shares."; render(); return; }
-  const opt = getOdds(match, betType).find(o => o.key === selected.optionKey);
-  const toWin = calcPayout(amount, opt.odds);
-
-  // Debit balance
-  await setDoc(doc(db, "balances", currentPlayer), { amount: bal - amount });
-
-  // Write bet
-  await addDoc(collection(db, "bets"), {
-    player: currentPlayer, matchId: match.id,
-    matchLabel: `${match.home} vs ${match.away}`,
-    ctLabel: match.ctLabel, betType,
-    optionKey: selected.optionKey, optionLabel: opt.label,
-    odds: opt.odds, wager: amount, toWin, status: "pending",
-    createdAt: serverTimestamp(),
-  });
-
-  toast(`${currentPlayer} wagered ${amount.toLocaleString()} on ${opt.label}`);
-  selected = null; wagerVal = ""; wagerError = "";
-}
-
-async function settleBet(betId, result) {
-  const bet = bets.find(b => b.id === betId);
-  if (!bet) return;
-  await updateDoc(doc(db, "bets", betId), { status: result });
-  const bal = balances[bet.player] ?? INITIAL_SHARES;
-  if (result === "won")  await setDoc(doc(db, "balances", bet.player), { amount: bal + bet.wager + bet.toWin });
-  if (result === "push") await setDoc(doc(db, "balances", bet.player), { amount: bal + bet.wager });
-  toast(result==="won" ? "Settled as won!" : result==="push" ? "Push — wager returned." : "Settled as lost.",
-        result==="won" ? "success" : result==="push" ? "info" : "error");
-}
-
-// ── Clock tick ──
-setInterval(() => {
-  now = Date.now();
-  // auto-clear selection if match locked
-  if (selected) {
-    const m = MATCHES.find(m => m.id === selected.matchId);
-    if (m && isLocked(m, now)) { selected = null; wagerVal = ""; }
-  }
-  render();
-}, 15000);
-
-// ── Render ──
+// ─────────── RENDER ───────────
 function render() {
+  let html = "";
 
-  const app = document.getElementById("app");
-  if (!isConfigured()) { renderConfig(app); return; }
-  if (!currentPlayer)  { renderLogin(app); return; }
-  renderMain(app);
-}
-
-function renderOddsLoading(app) {
-  app.innerHTML = `<div style="text-align:center;padding:3rem 1rem;color:#888;font-size:14px;">
-    <div style="font-size:24px;margin-bottom:12px;">⚽</div>
-    Loading live odds...<br>
-    <span style="font-size:12px;color:#bbb;">Odds update automatically 4x per day</span>
-  </div>`;
-}
-
-function renderConfig(app) {
-  app.innerHTML = `
-    <div id="config-screen">
-      <h2>Firebase Setup Required</h2>
-      <p>To make this work across devices, you need a free Firebase project. Here's how:</p>
-      <p>
-        1. Go to <a href="https://console.firebase.google.com" target="_blank">console.firebase.google.com</a><br>
-        2. Click "Add project" → name it (e.g. <em>wc2026bets</em>) → disable Analytics → Create<br>
-        3. Click the web icon (&lt;/&gt;) → register app → copy the <code>firebaseConfig</code> values<br>
-        4. In the left sidebar go to <strong>Firestore Database</strong> → Create database → Start in test mode<br>
-        5. Open this HTML file in a text editor and paste your values into the <code>FIREBASE_CONFIG</code> block at the top of the script<br>
-        6. Save and re-open the file — everyone opens the same file (host on GitHub Pages, Netlify, or just share via a tool like <a href="https://tiiny.host" target="_blank">tiiny.host</a>)
-      </p>
-      <p style="color:#A32D2D; font-weight:500;">The placeholders above still say REPLACE_WITH_YOUR_... — edit the file first.</p>
-    </div>`;
-}
-
-function renderLogin(app) {
-  if (pinEntry) {
-    // PIN entry screen for selected player
-    const pi = PLAYERS.indexOf(pinEntry);
-    app.innerHTML = `
-      <div id="login-screen">
-        <h1>WC2026 Fantasy Gambling</h1>
-        <p style="font-size:14px;font-weight:500;color:${PLAYER_COLORS[pi]}">${pinEntry}</p>
-        <p>Enter your 4-digit PIN</p>
-        <input id="pin-input" type="password" inputmode="numeric" maxlength="4"
-          placeholder="••••"
-          style="width:120px;text-align:center;font-size:22px;letter-spacing:6px;padding:10px;border:1.5px solid ${PLAYER_COLORS[pi]};border-radius:10px;outline:none;" />
-        ${pinError ? `<p style="color:#A32D2D;font-size:13px;">${pinError}</p>` : "<p style='height:18px'></p>"}
-        <button id="pin-submit" style="width:120px;padding:10px 0;border-radius:10px;border:1.5px solid ${PLAYER_COLORS[pi]};background:#fff;font-size:15px;font-weight:500;cursor:pointer;color:${PLAYER_COLORS[pi]};">Enter</button>
-        <button id="pin-back" style="background:none;border:none;color:#aaa;font-size:12px;cursor:pointer;margin-top:4px;">← Back</button>
-      </div>`;
-
-    const pinInput = document.getElementById("pin-input");
-    pinInput.focus();
-
-    function tryPin() {
-      const entered = pinInput.value;
-      if (entered === PINS[pinEntry]) {
-        pinError = "";
-        currentPlayer = pinEntry;
-        pinEntry = "";
-        sessionStorage.setItem("gsPlayer", currentPlayer);
-        ensureBalance(currentPlayer).then(() => { subscribe(); render(); });
-      } else {
-        pinError = "Wrong PIN — try again.";
-        pinInput.value = "";
-        render();
-      }
-    }
-
-    pinInput.addEventListener("keydown", e => { if (e.key === "Enter") tryPin(); });
-    document.getElementById("pin-submit").addEventListener("click", tryPin);
-    document.getElementById("pin-back").addEventListener("click", () => {
-      pinEntry = ""; pinError = ""; render();
-    });
-
-  } else {
-    // Player selection screen
-    app.innerHTML = `
-      <div id="login-screen">
-        <h1>WC2026 Fantasy Gambling</h1>
-        <p>Who are you?</p>
-        ${PLAYERS.map((p,i) => `
-          <button class="login-btn" data-player="${p}" style="border-color:${PLAYER_COLORS[i]};color:${PLAYER_COLORS[i]};">${p}</button>
-        `).join("")}
-      </div>`;
-    app.querySelectorAll(".login-btn").forEach(btn => {
-      btn.addEventListener("click", () => {
-        pinEntry = btn.dataset.player;
-        pinError = "";
-        render();
-      });
-    });
+  if (!currentPlayer) {
+    html += renderLogin();
+    app.innerHTML = html;
+    wireLogin();
+    return;
   }
-}
 
-function renderMain(app) {
-  const pi = PLAYERS.indexOf(currentPlayer);
-  const playerBets = bets.filter(b => b.player === currentPlayer);
-  const bal = balances[currentPlayer] ?? INITIAL_SHARES;
-  const pending = playerBets.filter(b=>b.status==="pending");
-  const atRisk = pending.reduce((s,b)=>s+b.wager,0);
-  const won  = playerBets.filter(b=>b.status==="won").length;
-  const lost = playerBets.filter(b=>b.status==="lost").length;
+  const bal = cBalances[currentPlayer] ?? 0;
+  const balCls = bal >= 0 ? "bal-pos" : "bal-neg";
 
-  const leaderboard = [...PLAYERS].map((p,i) => ({
-    player:p, idx:i,
-    balance: balances[p] ?? INITIAL_SHARES,
-    atRisk: bets.filter(b=>b.player===p&&b.status==="pending").reduce((s,b)=>s+b.wager,0),
-  })).sort((a,b)=>b.balance-a.balance);
+  html += `<div class="top">
+    <div class="top-name">${currentPlayer}</div>
+    <button class="top-switch" id="logout">Switch player</button>
+  </div>`;
 
-  const selectedMatch = selected ? MATCHES.find(m=>m.id===selected.matchId) : null;
-  const selectedOpt   = selected && selectedMatch ? getOdds(selectedMatch,betType).find(o=>o.key===selected.optionKey) : null;
-  const wAmt = parseInt(wagerVal,10)||0;
-  const toWinAmt = selectedOpt && wAmt>0 ? calcPayout(wAmt,selectedOpt.odds) : 0;
-
-  let html = `
-    <div id="topbar">
-      <span class="player-name" style="color:${PLAYER_COLORS[pi]}">${currentPlayer}</span>
-      <div style="text-align:center;">
-        <div class="clock">${formatCT(now)}</div>
-        ${oddsLastUpdated ? `<div style="font-size:9px;color:#bbb;">Odds: ${formatCT(new Date(oddsLastUpdated).getTime())}</div>` : ""}
-      </div>
-      <button class="logout-btn" id="logout-btn">Switch player</button>
-    </div>
-
-`;
-
-  // ── Stats: compute before building HTML ──
-  const sortedBals = [...PLAYERS].map(p => balances[p] ?? INITIAL_SHARES).sort((a,b) => b-a);
-  const myRank     = sortedBals.findIndex(b => b === bal) + 1;
-  const rankLabels = ["1st Place", "2nd Place", "3rd Place", "4th Place"];
-  const rankLabel  = rankLabels[myRank - 1] || (myRank + "th");
-  const gap        = sortedBals[0] - bal;
-  const rankSub    = myRank === 1 ? "" : ("-" + gap.toLocaleString() + " vs 1st");
-
-  const wonShares  = playerBets.filter(b=>b.status==="won").reduce((s,b)=>s+b.toWin,0);
-  const lostShares = playerBets.filter(b=>b.status==="lost").reduce((s,b)=>s+b.wager,0);
-  const drawShares = playerBets.filter(b=>b.status==="push").reduce((s,b)=>s+b.wager,0);
-  const pendShares = playerBets.filter(b=>b.status==="pending").reduce((s,b)=>s+b.wager,0);
-  const wonGames   = playerBets.filter(b=>b.status==="won").length;
-  const lostGames  = playerBets.filter(b=>b.status==="lost").length;
-  const drawGames  = playerBets.filter(b=>b.status==="push").length;
-  const pendGames  = playerBets.filter(b=>b.status==="pending").length;
-
-  html += `<div class="stats-row">
-    <div class="stats-row-inner">
-      <div class="stat-card">
-        <div class="stat-label">Balance</div>
-        <div class="stat-value">${bal.toLocaleString()}</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">Rank</div>
-        <div class="stat-value" style="font-size:14px;">${rankLabel}</div>
-        ${rankSub ? '<div class="stat-sub">' + rankSub + '</div>' : ""}
-      </div>
-      <div class="stat-card" style="background:#E8F0FE;">
-        <div class="stat-label" style="color:#185FA5;">Pending</div>
-        <div style="display:flex;gap:14px;align-items:flex-end;">
-          <span>
-            <div style="font-size:10px;color:#185FA5;font-weight:600;">Bets</div>
-            <div style="font-size:15px;font-weight:700;color:#185FA5;">${pendGames}</div>
-          </span>
-          <span>
-            <div style="font-size:10px;color:#185FA5;font-weight:600;">Shares</div>
-            <div style="font-size:13px;font-weight:700;color:#185FA5;">${pendShares.toLocaleString()}</div>
-          </span>
-        </div>
-      </div>
-    </div>
-    <div class="stats-row-inner">
-      <div class="stat-card-wide">
-        <div class="stat-label" style="margin-bottom:6px;">Record (Bets)</div>
-        <div style="display:flex;gap:18px;">
-          <span class="stat-col">
-            <div class="stat-col-label" style="color:#3B6D11;">Won</div>
-            <div class="stat-col-value" style="color:#3B6D11;">${wonGames}</div>
-          </span>
-          <span class="stat-col">
-            <div class="stat-col-label" style="color:#A32D2D;">Lost</div>
-            <div class="stat-col-value" style="color:#A32D2D;">${lostGames}</div>
-          </span>
-          <span class="stat-col">
-            <div class="stat-col-label" style="color:#C86A00;">Draw</div>
-            <div class="stat-col-value" style="color:#C86A00;">${drawGames}</div>
-          </span>
-        </div>
-      </div>
-      <div class="stat-card-wide">
-        <div class="stat-label" style="margin-bottom:6px;">Record (Shares)</div>
-        <div style="display:flex;gap:18px;">
-          <span class="stat-col">
-            <div class="stat-col-label" style="color:#3B6D11;">Won</div>
-            <div class="stat-col-value" style="font-size:13px;color:#3B6D11;">+${wonShares.toLocaleString()}</div>
-          </span>
-          <span class="stat-col">
-            <div class="stat-col-label" style="color:#A32D2D;">Lost</div>
-            <div class="stat-col-value" style="font-size:13px;color:#A32D2D;">-${lostShares.toLocaleString()}</div>
-          </span>
-          <span class="stat-col">
-            <div class="stat-col-label" style="color:#C86A00;">Draw</div>
-            <div class="stat-col-value" style="font-size:13px;color:#C86A00;">${drawShares.toLocaleString()}</div>
-          </span>
-        </div>
-      </div>
-    </div>
+  html += `<div class="bal-card">
+    <div><div class="bal-label">Custom Balance</div>
+    <div class="bal-amount ${balCls}">${bal >= 0 ? "+" : ""}${fmtShares(bal)}</div></div>
+    <div style="font-size:11px;color:#aaa;">Starts at 0 · Can go negative</div>
   </div>`;
 
   html += `<div class="tabs">
-      <button class="tab-btn ${activeTab==="wager"?"active":""}" data-tab="wager">Odds &amp; Bets</button>
-      <button class="tab-btn ${activeTab==="mybets"?"active":""}" data-tab="mybets">My Bets</button>
-      <button class="tab-btn ${activeTab==="all"?"active":""}" data-tab="all">All Bets</button>
-      <button class="tab-btn ${activeTab==="leaderboard"?"active":""}" data-tab="leaderboard">Leaderboard</button>
-      ${currentPlayer === "R3" ? `<button class="tab-btn ${activeTab==="commissioner"?"active":""}" data-tab="commissioner" style="color:#993C1D;">Commissioner</button>` : ""}
-      <button class="tab-btn ${activeTab==="audit"?"active":""}" data-tab="audit">📋 Audit</button>
+    <button class="tab ${activeTab==="events"?"active":""}" data-tab="events">Events</button>
+    <button class="tab ${activeTab==="mybets"?"active":""}" data-tab="mybets">My Bets</button>
+    <button class="tab ${activeTab==="allbets"?"active":""}" data-tab="allbets">Pending</button>
+    <button class="tab ${activeTab==="completed"?"active":""}" data-tab="completed">Completed</button>
+    <button class="tab ${activeTab==="leaderboard"?"active":""}" data-tab="leaderboard">Leaderboard</button>
+    ${currentPlayer === COMMISSIONER ? `<button class="tab comm ${activeTab==="manage"?"active":""}" data-tab="manage">Manage</button>` : ""}
+  </div>`;
+
+  if (activeTab === "events")      html += renderEvents();
+  if (activeTab === "mybets")      html += renderMyBets();
+  if (activeTab === "allbets")     html += renderAllBets();
+  if (activeTab === "completed")   html += renderCompletedBets();
+  if (activeTab === "completed")   html += renderCompleted();
+  if (activeTab === "leaderboard") html += renderLeaderboard();
+  if (activeTab === "manage" && currentPlayer === COMMISSIONER) html += renderManage();
+
+  app.innerHTML = html;
+  wireMain();
+}
+
+function renderLogin() {
+  return `<div class="login-box">
+    <div class="login-title">🎯 Custom Bets</div>
+    <div class="player-grid">
+      ${PLAYERS.map((p,i) => `<button class="player-btn ${pinSel===p?"sel":""}" data-player="${p}">${p}</button>`).join("")}
+    </div>
+    <input type="password" inputmode="numeric" maxlength="4" class="pin-input" id="pin" placeholder="••••" value="${pinVal}" />
+    <button class="login-go" id="login-go">Enter</button>
+    <div class="login-err" id="login-err"></div>
+  </div>`;
+}
+
+function isEventLocked(ev) {
+  if (ev.locked) return true;
+  if (ev.startTime && Date.now() >= ev.startTime) return true;
+  return false;
+}
+
+function renderEvents() {
+  let html = "";
+  const openEvents = events.filter(e => !e.archived);
+  if (openEvents.length === 0) {
+    html += '<div style="text-align:center;color:#aaa;padding:3rem 0;font-size:14px;">No events yet.</div>';
+  }
+
+  openEvents.forEach(ev => {
+    html += `<div class="event-card">`;
+    html += `<div class="event-title">${ev.title}</div>`;
+    const evLocked = isEventLocked(ev);
+    html += `<div class="event-sub">${ev.subtitle || ""}${evLocked ? " · 🔒 Locked" : ""}</div>`;
+
+    (ev.bets || []).forEach((bet, bIdx) => {
+      html += `<div class="bet-block">`;
+      html += `<div class="bet-label">${bet.label}</div>`;
+      html += `<div class="opt-row">`;
+      (bet.options || []).forEach((opt, oIdx) => {
+        const myBet = cBets.find(b => b.player === currentPlayer && b.eventId === ev.id && b.betIdx === bIdx && b.optIdx === oIdx && b.status !== "deleted");
+        const isSettled = bet.settled;
+        const isWinner  = bet.winnerIdx === oIdx;
+        let cls = "opt-pill";
+        if (myBet) cls += " mine";
+        if (isSettled) cls += isWinner ? " won" : " lost";
+        if (evLocked || isSettled) cls += " locked";
+        html += `<span class="${cls}" data-event="${ev.id}" data-bidx="${bIdx}" data-oidx="${oIdx}" data-odds="${opt.odds}" data-label="${opt.label}" data-betlabel="${bet.label}" data-eventtitle="${ev.title}" data-locked="${evLocked || isSettled ? "1" : "0"}">${opt.label} ${fmtOdds(opt.odds)}</span>`;
+      });
+      html += `</div></div>`;
+    });
+
+    html += `</div>`;
+  });
+  return html;
+}
+
+function renderMyBets() {
+  let html = "";
+  const mine = cBets.filter(b => b.player === currentPlayer && b.status !== "deleted")
+    .sort((a,b) => (b.createdAt?.seconds||0) - (a.createdAt?.seconds||0));
+  if (mine.length === 0) return '<div style="text-align:center;color:#aaa;padding:3rem 0;font-size:14px;">No bets yet.</div>';
+
+  mine.forEach(b => {
+    const stCls = { pending:"st-pending", won:"st-won", lost:"st-lost", push:"st-push" }[b.status] || "st-pending";
+    const stLbl = { pending:"Pending", won:"Won ✓", lost:"Lost ✗", push:"Push ~" }[b.status] || b.status;
+    html += `<div class="bet-card">
+      <div class="bet-card-head">
+        <div>
+          <div class="bet-card-title">${b.eventTitle} — ${b.betLabel}</div>
+          <div class="bet-card-sub">${b.optionLabel} (${fmtOdds(b.odds)}) · Wager ${fmtShares(b.wager)} · To win ${fmtShares(b.toWin)}</div>
+        </div>
+        <span class="status-tag ${stCls}">${stLbl}</span>
+      </div>
+    </div>`;
+  });
+  return html;
+}
+
+function renderAllBets() {
+  let html = "";
+  const all = cBets.filter(b => b.status === "pending")
+    .sort((a,b) => (b.createdAt?.seconds||0) - (a.createdAt?.seconds||0));
+
+  if (all.length === 0) return '<div style="text-align:center;color:#aaa;padding:3rem 0;font-size:14px;">No pending bets.</div>';
+
+  // Group by player for a clean overview
+  PLAYERS.forEach((p, pi) => {
+    const pb = all.filter(b => b.player === p);
+    if (pb.length === 0) return;
+    const risk = pb.reduce((s,b) => s + (b.wager||0), 0);
+    const pot  = pb.reduce((s,b) => s + (b.wager||0) + (b.toWin||0), 0);
+
+    html += `<div style="font-weight:700;font-size:13px;color:${COLORS[pi]};margin:14px 0 6px;border-bottom:2px solid ${COLORS[pi]};padding-bottom:4px;">
+      ${p} — ${pb.length} pending · ${fmtShares(risk)} at risk · ${fmtShares(pot)} potential
     </div>`;
 
-  // ── ODDS & BETS ──
-  if (activeTab === "wager") {
-    // ── Odds status table ──
-    // ── Odds status bar ──
-    const SCHEDULED_HOURS_CT = [8, 10, 12, 14, 16, 18, 20]; // CT hours
-    const lastUpd = oddsLastUpdated ? new Date(oddsLastUpdated) : null;
-
-    // Get CT hour of last update
-    const lastUpdCTHour = lastUpd ? parseInt(lastUpd.toLocaleString('en-US', {
-      timeZone: 'America/Chicago', hour: 'numeric', hour12: false
-    })) : null;
-    const lastUpdDate = lastUpd ? lastUpd.toLocaleDateString('en-US', { timeZone: 'America/Chicago' }) : null;
-    const todayDate = new Date(now).toLocaleDateString('en-US', { timeZone: 'America/Chicago' });
-    const nowCTHour = parseInt(new Date(now).toLocaleString('en-US', {
-      timeZone: 'America/Chicago', hour: 'numeric', hour12: false
-    }));
-
-    html += '<div class="odds-status-bar">';
-    html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">';
-    html += '<div class="odds-status-title" style="margin-bottom:0;">Odds — Pinnacle</div>';
-    if (lastUpd) {
-      html += '<div style="font-size:10px;color:#888;">Updated ' + lastUpd.toLocaleTimeString('en-US',{timeZone:'America/Chicago',hour:'numeric',minute:'2-digit',hour12:true}) + ' CT</div>';
-    }
-    html += '</div>';
-    html += '<div class="odds-status-grid">';
-    SCHEDULED_HOURS_CT.forEach(hr => {
-      const label = hr === 0 ? '12AM' : hr < 12 ? hr+'AM' : hr === 12 ? '12PM' : (hr-12)+'PM';
-      const isPast = nowCTHour > hr || (nowCTHour === hr && new Date(now).getMinutes() >= 5);
-      // A slot is "hit" if odds were updated today at ANY point after this slot time
-      // (one update covers all prior slots that day)
-      const isHit  = lastUpd && lastUpdDate === todayDate && lastUpdCTHour !== null && lastUpdCTHour >= hr;
-      let icon, style;
-      if (!isPast)     { icon = '—';  style = 'color:#bbb;'; }
-      else if (isHit)  { icon = '✓';  style = 'color:#3B6D11;font-weight:700;'; }
-      else             { icon = '✗';  style = 'color:#A32D2D;'; }
-      html += '<span style="font-size:11px;' + style + 'white-space:nowrap;">' + icon + ' ' + label + '</span>';
-    });
-    html += '</div>';
-
-    // Scores last updated
-    if (scoresLastUpdated) {
-      const scUpd = new Date(scoresLastUpdated);
-      html += '<div style="font-size:10px;color:#888;margin-top:4px;">⚽ Scores checked ' + scUpd.toLocaleTimeString('en-US',{timeZone:'America/Chicago',hour:'numeric',minute:'2-digit',hour12:true}) + ' CT · Bets settle on full-time only</div>';
-    }
-    html += '</div>';
-
-    if (MATCHES.length === 0) {
-      html += `<div style="text-align:center;color:#aaa;padding:3rem 0;font-size:14px;">
-        Loading odds… check back in a moment.
-      </div>`;
-    }
-
-    // Show message if Total Goals tab has no matches with real odds
-    if (betType === "Total Goals" && MATCHES.filter(m => { try { return m.total && m.total.line && m.total.over && m.total.under && !(m.total.over === -110 && m.total.under === -110 && m.total.line === 2.5); } catch(e) { return false; } }).length === 0) {
-      html += '<div style="text-align:center;color:#aaa;padding:2rem 1rem;font-size:13px;">⏳ Total goals odds not yet available.<br><span style="font-size:11px;">Pinnacle typically opens these markets closer to kickoff.</span></div>';
-    }
-    html += `<div class="bet-type-row">`;
-    BET_TYPES.forEach(bt => {
-      html += `<button class="bt-pill ${betType===bt?"active":""}" data-bt="${bt}">${bt}</button>`;
-    });
-    html += `</div>`;
-
-    let lastDateLabel = null;
-    MATCHES.filter(m => !isLocked(m, now)).forEach(m => {
-      const locked = isLocked(m, now);
-      const opts   = getOdds(m, betType);
-      if (opts.length === 0 && betType === "Total Goals") return; // skip matches with no total data
-      const cd     = countdown(m, now);
-      const isSel  = selected && selected.matchId === m.id;
-      let lockHtml = "";
-      if (locked) { lockHtml = `<div class="match-lock locked">Locked</div>`; }
-      else if (cd) {
-        const soon = cd.includes("m") && !cd.includes("h") && !cd.includes("d");
-        lockHtml = `<div class="match-lock ${soon?"soon":"ok"}">Locks in ${cd}</div>`;
-      }
-
-      // Date divider — extract the date portion from ctLabel (everything before the ·)
-      const dateLabel = m.ctLabel ? m.ctLabel.split(" · ")[0].trim() : "";
-      if (dateLabel && dateLabel !== lastDateLabel) {
-        html += `<div class="date-divider${lastDateLabel === null ? " first-divider" : ""}">${dateLabel}</div>`;
-        lastDateLabel = dateLabel;
-      }
-      html += `
-        <div class="match-row${locked?" locked":""}${isSel?" selected":""}" data-match="${m.id}">
-          <div class="match-info">
-            <div class="match-name">${m.home} vs ${m.away}</div>
-            <div class="match-meta">${m.ctLabel}</div>
-            ${lockHtml}
+    pb.forEach(b => {
+      html += `<div class="bet-card">
+        <div class="bet-card-head">
+          <div>
+            <div class="bet-card-title">${b.eventTitle} — ${b.betLabel}</div>
+            <div class="bet-card-sub">${b.optionLabel} (${fmtOdds(b.odds)}) · Wager ${fmtShares(b.wager)} · To win ${fmtShares(b.toWin)}</div>
           </div>
-          <div class="odds-pills">
-            ${opts.map(opt => {
-              const isActive = isSel && selected.optionKey === opt.key;
-              return `<button class="odds-pill${isActive?" active":""}${locked?" disabled":""}" data-match="${m.id}" data-opt="${opt.key}" ${locked?"disabled":""}>
-                <div class="odds-pill-label">${opt.label}</div>
-                <div class="odds-pill-val ${opt.odds>0?"pos":"neg"}">${fmt(opt.odds)}</div>
-              </button>`;
-            }).join("")}
-          </div>
-        </div>`;
-
-      // Pending bets for this match:
-      // - If match is locked: show everyone's bets (game started, no spoilers possible)
-      // - If match is NOT locked: only show the current player's own bets
-      const matchPending = bets.filter(b => b.matchId === m.id && b.status === "pending");
-      const visiblePending = locked
-        ? matchPending
-        : matchPending.filter(b => b.player === currentPlayer);
-      if (visiblePending.length > 0) {
-        html += `<div class="match-pending-bets">`;
-        visiblePending.forEach(b => {
-          const bpi = PLAYERS.indexOf(b.player);
-          html += `<span class="pending-bet-tag" style="background:${PLAYER_BG[bpi]};color:${PLAYER_COLORS[bpi]};">${b.player}: ${b.optionLabel} · ${b.wager.toLocaleString()} to win ${b.toWin.toLocaleString()}</span>`;
-        });
-        // If match is still open and others have bets, show a sealed count so you know action exists
-        if (!locked) {
-          const otherBetCount = matchPending.filter(b => b.player !== currentPlayer).length;
-          if (otherBetCount > 0) {
-            html += `<span class="pending-bet-tag" style="background:#F1EFE8;color:#888;">${otherBetCount} other bet${otherBetCount>1?"s":""} sealed until kickoff</span>`;
-          }
-        }
-        html += `</div>`;
-      } else if (!locked && matchPending.filter(b => b.player !== currentPlayer).length > 0) {
-        // Others have bets but current player has none — still show the sealed count
-        const otherBetCount = matchPending.filter(b => b.player !== currentPlayer).length;
-        html += `<div class="match-pending-bets"><span class="pending-bet-tag" style="background:#F1EFE8;color:#888;">${otherBetCount} bet${otherBetCount>1?"s":""} sealed until kickoff</span></div>`;
-      }
-
-      // ── Inline wager slip — renders directly below the selected match ──
-      if (isSel && selectedOpt && !locked) {
-        html += `<div class="wager-slip" style="margin:-2px 0 6px 0;border-radius:0 0 9px 9px;border-top:none;">
-          <div class="slip-desc">
-            <strong>${currentPlayer}</strong> · ${m.home} vs ${m.away} · ${betType} → <span class="pick">${selectedOpt.label} ${fmt(selectedOpt.odds)}</span>
-          </div>
-          <div class="slip-inputs">
-            <input type="number" id="wager-input" value="${wagerVal}" placeholder="Shares to wager" min="10" max="${bal}" />
-            <span class="slip-bal">Bal: ${bal.toLocaleString()}</span>
-          </div>
-          ${wAmt>0 ? `<div id="slip-calcs" class="slip-calcs">
-            <span>Wager: <strong>${wAmt.toLocaleString()}</strong></span>
-            <span>To win: <strong class="green">${toWinAmt.toLocaleString()}</strong></span>
-            <span>Return: <strong>${(wAmt+toWinAmt).toLocaleString()}</strong></span>
-          </div>` : ""}
-          ${wagerError ? `<div id="slip-error" class="slip-error">${wagerError}</div>` : `<div id="slip-error" class="slip-error"></div>`}
-          <button class="place-btn" id="place-btn">Place bet</button>
-        </div>`;
-      }
-    });
-
-
-  }
-
-  // ── MY BETS ──
-  if (activeTab === "mybets") {
-    if (playerBets.length === 0) {
-      html += `<div style="text-align:center;color:#aaa;padding:2rem 0;font-size:14px;">No bets yet.</div>`;
-    } else {
-      playerBets.forEach(bet => { html += renderBetCard(bet, true); });
-    }
-  }
-
-  // ── ALL BETS — grouped by match, chronological, hide pre-kickoff bets from other players ──
-  if (activeTab === "all") {
-    let anyShown = false;
-    // Newest to oldest — reverse the sorted MATCHES array
-    [...MATCHES].reverse().forEach(m => {
-      const matchLocked = isLocked(m, now);
-      const matchBets = bets.filter(b => b.matchId === m.id);
-      if (matchBets.length === 0) return;
-      const locked = isLocked(m, now);
-      // Visible bets: own bets always; others' bets only once match is locked
-      const visible = matchBets.filter(b => b.player === currentPlayer || locked);
-      const sealedCount = matchBets.filter(b => b.player !== currentPlayer && !locked).length;
-      if (visible.length === 0 && sealedCount === 0) return;
-      anyShown = true;
-      html += `<div style="font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.05em;margin:14px 0 6px;">${m.home} vs ${m.away} <span style="font-weight:400;text-transform:none;letter-spacing:0;">${m.ctLabel}</span></div>`;
-      visible.forEach(bet => { html += renderBetCard(bet, currentPlayer === bet.player); });
-      if (sealedCount > 0) {
-        html += `<div style="font-size:12px;color:#aaa;padding:6px 12px;background:#f5f5f3;border-radius:8px;margin-bottom:6px;">${sealedCount} bet${sealedCount>1?"s":""} from other players sealed until kickoff</div>`;
-      }
-    });
-    if (!anyShown) {
-      html += `<div style="text-align:center;color:#aaa;padding:2rem 0;font-size:14px;">No bets placed yet.</div>`;
-    }
-  }
-
-  // ── COMMISSIONER ──
-  if (activeTab === "commissioner") {
-    // Check if force-inject bets have already been added
-    const injectedAlready = bets.some(b => b.player === "Brez" && b.wager === 1000 && b.betType === "Total Goals");
-    html += `<div style="font-size:12px;color:#993C1D;font-weight:600;margin-bottom:8px;">Commissioner Mode · Enter final scores to auto-settle all bets</div>
-      <div style="margin-bottom:14px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;">
-        <button id="refresh-odds-btn" style="background:#185FA5;color:#fff;border:none;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:600;cursor:pointer;">🔄 Refresh Odds Now</button>
-        <span id="refresh-odds-status" style="font-size:12px;color:#888;"></span>
-        <button id="refresh-scores-btn" style="background:#3B6D11;color:#fff;border:none;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:600;cursor:pointer;">⚽ Force Score Update</button>
-        <span id="refresh-scores-status" style="font-size:12px;color:#888;"></span>
-      </div>`;
-    if (!injectedAlready) {
-      html += `<div style="background:#FFF8E6;border:1px solid #F0D080;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;">
-        <strong>4 bets need to be manually entered</strong> (placed before app was set up)<br>
-        <span style="color:#666;">Brez: Korea/Czechia Over 2.5 · 1000 shares &nbsp;|&nbsp; AK: Mexico Win · 235 shares &nbsp;|&nbsp; AK: Korea/Czechia Draw · 51 shares &nbsp;|&nbsp; AK: Korea/Czechia Over 2.5 · 100 shares</span><br>
-        <button id="inject-bets-btn" style="margin-top:8px;background:#993C1D;color:#fff;border:none;border-radius:6px;padding:5px 14px;cursor:pointer;font-size:12px;font-weight:600;">Inject these 4 bets →</button>
-      </div>`;
-    }
-    MATCHES.forEach(m => {
-      const saved = scores[m.id];
-      const hasScore = saved && saved.homeScore !== undefined;
-      const pendingCount = bets.filter(b => b.matchId === m.id && b.status === "pending").length;
-      html += `<div class="comm-match${hasScore?" settled":""}">
-        <div class="comm-match-title">${m.home} vs ${m.away}</div>
-        <div class="comm-match-meta">${m.ctLabel} · ${pendingCount} pending bet${pendingCount!==1?"s":""}</div>`;
-      if (hasScore) {
-        html += `<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-          <div class="comm-settled-score">${m.home} ${saved.homeScore}–${saved.awayScore} ${m.away} &nbsp;<span style="font-size:11px;font-weight:400;color:#3B6D11;">✓ Settled</span></div>
-          <button class="edit-score-btn" data-match="${m.id}" style="font-size:11px;padding:3px 10px;background:#fff;border:1px solid #ccc;border-radius:6px;cursor:pointer;color:#666;">Edit Score</button>
+          <span class="status-tag st-pending">Pending</span>
         </div>
-        <div id="edit-form-${m.id}" style="display:none;margin-top:8px;">
-          <div class="comm-score-row">
-            <label>${m.home}</label>
-            <input class="comm-score-input" type="number" min="0" max="20" id="ehs-${m.id}" value="${saved.homeScore}" />
-            <span class="comm-dash">–</span>
-            <input class="comm-score-input" type="number" min="0" max="20" id="eas-${m.id}" value="${saved.awayScore}" />
-            <label>${m.away}</label>
-            <button class="comm-submit" data-match="${m.id}" id="re-settle-${m.id}">Re-settle</button>
+      </div>`;
+    });
+  });
+  return html;
+}
+
+function renderCompletedBets() {
+  let html = "";
+  const done = cBets.filter(b => ["won","lost","push"].includes(b.status))
+    .sort((a,b) => (b.createdAt?.seconds||0) - (a.createdAt?.seconds||0));
+
+  if (done.length === 0) return '<div style="text-align:center;color:#aaa;padding:3rem 0;font-size:14px;">No completed bets yet.</div>';
+
+  PLAYERS.forEach((p, pi) => {
+    const pb = done.filter(b => b.player === p);
+    if (pb.length === 0) return;
+    const won  = pb.filter(b => b.status === "won");
+    const lost = pb.filter(b => b.status === "lost");
+    const push = pb.filter(b => b.status === "push");
+    const net  = won.reduce((s,b) => s + (b.toWin||0), 0) - lost.reduce((s,b) => s + (b.wager||0), 0);
+    const netStr = (net >= 0 ? "+" : "") + fmtShares(net);
+    const netColor = net >= 0 ? "#3B6D11" : "#A32D2D";
+
+    html += `<div style="font-weight:700;font-size:13px;color:${COLORS[pi]};margin:14px 0 6px;border-bottom:2px solid ${COLORS[pi]};padding-bottom:4px;">
+      ${p} — ${won.length}-${lost.length}-${push.length} · <span style="color:${netColor};">${netStr} net</span>
+    </div>`;
+
+    pb.forEach(b => {
+      const stCls = { won:"st-won", lost:"st-lost", push:"st-push" }[b.status];
+      const stLbl = { won:"Won ✓", lost:"Lost ✗", push:"Push ~" }[b.status];
+      html += `<div class="bet-card">
+        <div class="bet-card-head">
+          <div>
+            <div class="bet-card-title">${b.eventTitle} — ${b.betLabel}</div>
+            <div class="bet-card-sub">${b.optionLabel} (${fmtOdds(b.odds)}) · Wager ${fmtShares(b.wager)} · To win ${fmtShares(b.toWin)}</div>
           </div>
-          <div style="font-size:11px;color:#A32D2D;margin-top:6px;">⚠ This will reverse all existing payouts for this match and re-settle with the new score.</div>
-        </div>`;
+          <span class="status-tag ${stCls}">${stLbl}</span>
+        </div>
+      </div>`;
+    });
+  });
+  return html;
+}
+
+function renderCompleted() {
+  let html = "";
+  const done = cBets.filter(b => ["won","lost","push"].includes(b.status))
+    .sort((a,b) => (b.createdAt?.seconds||0) - (a.createdAt?.seconds||0));
+
+  if (done.length === 0) return '<div style="text-align:center;color:#aaa;padding:3rem 0;font-size:14px;">No completed bets yet.</div>';
+
+  PLAYERS.forEach((p, pi) => {
+    const pb = done.filter(b => b.player === p);
+    if (pb.length === 0) return;
+    const won  = pb.filter(b => b.status === "won");
+    const lost = pb.filter(b => b.status === "lost");
+    const push = pb.filter(b => b.status === "push");
+    const net  = won.reduce((s,b) => s + (b.toWin||0), 0) - lost.reduce((s,b) => s + (b.wager||0), 0);
+    const netStr = (net >= 0 ? "+" : "") + fmtShares(net);
+    const netColor = net >= 0 ? "#3B6D11" : "#A32D2D";
+
+    html += `<div style="font-weight:700;font-size:13px;color:${COLORS[pi]};margin:14px 0 6px;border-bottom:2px solid ${COLORS[pi]};padding-bottom:4px;">
+      ${p} — ${won.length}-${lost.length}-${push.length} · <span style="color:${netColor};">${netStr}</span>
+    </div>`;
+
+    pb.forEach(b => {
+      const stCls = { won:"st-won", lost:"st-lost", push:"st-push" }[b.status];
+      const stLbl = { won:"Won ✓", lost:"Lost ✗", push:"Push ~" }[b.status];
+      html += `<div class="bet-card">
+        <div class="bet-card-head">
+          <div>
+            <div class="bet-card-title">${b.eventTitle} — ${b.betLabel}</div>
+            <div class="bet-card-sub">${b.optionLabel} (${fmtOdds(b.odds)}) · Wager ${fmtShares(b.wager)} · To win ${fmtShares(b.toWin)}</div>
+          </div>
+          <span class="status-tag ${stCls}">${stLbl}</span>
+        </div>
+      </div>`;
+    });
+  });
+  return html;
+}
+
+function renderLeaderboard() {
+  let html = "";
+  const board = PLAYERS.map((p,i) => {
+    const pb = cBets.filter(b => b.player === p && b.status !== "deleted");
+    return {
+      player: p, idx: i,
+      bal: cBalances[p] ?? 0,
+      won: pb.filter(b => b.status==="won").length,
+      lost: pb.filter(b => b.status==="lost").length,
+      push: pb.filter(b => b.status==="push").length,
+      pending: pb.filter(b => b.status==="pending").length,
+    };
+  }).sort((a,b) => b.bal - a.bal);
+
+  board.forEach((e, rank) => {
+    const balCls = e.bal >= 0 ? "bal-pos" : "bal-neg";
+    html += `<div class="lb-row">
+      <div class="lb-rank">#${rank+1}</div>
+      <div class="lb-avatar" style="background:${BGS[e.idx]};color:${COLORS[e.idx]};">${INITIALS[e.idx]}</div>
+      <div class="lb-name">${e.player}<div class="lb-rec">${e.won}-${e.lost}-${e.push}${e.pending ? " · " + e.pending + " pending" : ""}</div></div>
+      <div class="lb-bal ${balCls}">${e.bal >= 0 ? "+" : ""}${fmtShares(e.bal)}</div>
+    </div>`;
+  });
+  return html;
+}
+
+function renderManage() {
+  let html = "";
+
+  // Balance editor
+  html += `<div class="comm-form">
+    <div style="font-weight:700;font-size:14px;color:#993C1D;margin-bottom:8px;">Edit Balances</div>
+    <div style="font-size:11px;color:#888;margin-bottom:8px;">Directly set each player's custom balance (e.g. to log bets from before the app).</div>
+    ${PLAYERS.map((p,i) => `
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+        <div style="width:34px;height:34px;border-radius:50%;background:${BGS[i]};color:${COLORS[i]};display:flex;align-items:center;justify-content:center;font-weight:600;font-size:12px;flex-shrink:0;">${INITIALS[i]}</div>
+        <div style="font-weight:600;font-size:13px;min-width:44px;">${p}</div>
+        <input class="bal-edit" data-player="${p}" type="number" value="${cBalances[p] ?? 0}" style="flex:1;padding:8px 10px;border:1px solid #ddd;border-radius:7px;font-size:14px;" />
+      </div>`).join("")}
+    <button class="btn-blue" id="save-balances" style="margin-top:8px;width:100%;">Save Balances</button>
+  </div>`;
+
+  // Create event form
+  html += `<div class="comm-form">
+    <div style="font-weight:700;font-size:14px;color:#993C1D;margin-bottom:8px;">Create Event</div>
+    <label>Event Title</label>
+    <input id="ev-title" placeholder="e.g. Softball vs Carpet Munchers" />
+    <label>Date &amp; Time (event auto-locks at this time)</label>
+    <input id="ev-start" type="datetime-local" />
+    <div id="bet-builder"></div>
+    <button class="btn-gray" id="add-bet-row" style="margin-top:10px;">+ Add Bet</button>
+    <button class="btn-blue" id="create-event" style="margin-top:10px;width:100%;">Create Event</button>
+  </div>`;
+
+  // Existing events management
+  events.filter(e => !e.archived).forEach(ev => {
+    // ── EDIT MODE ──
+    if (editingEventId === ev.id) {
+      html += `<div class="comm-form" style="border-color:#185FA5;">
+        <div style="font-weight:700;font-size:14px;color:#185FA5;margin-bottom:8px;">✏️ Editing: ${ev.title}</div>
+        <label>Event Title</label>
+        <input id="edit-title" value="${(ev.title||"").replace(/"/g,'&quot;')}" />
+        <label>Date &amp; Time</label>
+        <input id="edit-start" type="datetime-local" value="${toDatetimeLocal(ev.startTime)}" />`;
+
+      (ev.bets||[]).forEach((bet, bIdx) => {
+        html += `<div class="comm-add-bet">
+          <label>Bet ${bIdx+1} Label ${bet.settled ? "(settled — label only)" : ""}</label>
+          <input class="edit-bet-label" data-bidx="${bIdx}" value="${(bet.label||"").replace(/"/g,'&quot;')}" />`;
+        (bet.options||[]).forEach((opt, oIdx) => {
+          const hasBets = cBets.some(b => b.eventId === ev.id && b.betIdx === bIdx && b.optIdx === oIdx && b.status === "pending");
+          html += `<div class="comm-opt-row">
+            <input class="edit-opt-label" data-bidx="${bIdx}" data-oidx="${oIdx}" value="${(opt.label||"").replace(/"/g,'&quot;')}" ${bet.settled?"disabled":""} />
+            <input class="edit-opt-odds" data-bidx="${bIdx}" data-oidx="${oIdx}" value="${opt.odds}" style="max-width:110px;" ${bet.settled||hasBets?"disabled title='Has pending bets'":""} />
+          </div>`;
+        });
+        html += `</div>`;
+      });
+
+      html += `<div style="display:flex;gap:8px;margin-top:12px;">
+        <button class="btn-blue" id="save-edit" data-evid="${ev.id}" style="flex:1;">Save Changes</button>
+        <button class="btn-gray" id="cancel-edit">Cancel</button>
+      </div></div>`;
+      return;
+    }
+
+    html += `<div class="event-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">
+        <div><div class="event-title">${ev.title}</div>
+        <div class="event-sub">${ev.subtitle||""}${isEventLocked(ev)?" · 🔒":""}</div></div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          <button class="btn-blue" data-editev="${ev.id}" style="padding:6px 14px;font-size:12px;">Edit</button>
+          <button class="${ev.locked?"btn-gray":"btn-orange"}" data-lockev="${ev.id}" data-locked="${ev.locked?"1":"0"}">${ev.locked?"Unlock":"Lock"}</button>
+          <button class="btn-red" data-delev="${ev.id}">Delete</button>
+        </div>
+      </div>`;
+
+    (ev.bets || []).forEach((bet, bIdx) => {
+      html += `<div class="bet-block">
+        <div class="bet-label">${bet.label} ${bet.settled ? '<span style="color:#3B6D11;font-size:11px;">✓ Settled</span>' : ""}</div>`;
+      if (!bet.settled) {
+        html += `<div class="opt-row">`;
+        (bet.options||[]).forEach((opt, oIdx) => {
+          html += `<button class="btn-green" data-settleev="${ev.id}" data-bidx="${bIdx}" data-oidx="${oIdx}">${opt.label} Won</button>`;
+        });
+        html += `<button class="btn-orange" data-pushev="${ev.id}" data-bidx="${bIdx}">Push (refund all)</button>`;
+        html += `</div>`;
       } else {
-        html += `<div class="comm-score-row">
-          <label>${m.home}</label>
-          <input class="comm-score-input" type="number" min="0" max="20" id="hs-${m.id}" value="0" />
-          <span class="comm-dash">–</span>
-          <input class="comm-score-input" type="number" min="0" max="20" id="as-${m.id}" value="0" />
-          <label>${m.away}</label>
-          <button class="comm-submit" data-match="${m.id}" id="settle-${m.id}"${pendingCount===0?" disabled":""}>Settle</button>
-        </div>`;
-        // Live preview of what the score would mean
-        html += `<div class="comm-preview" id="preview-${m.id}"></div>`;
+        const w = bet.winnerIdx != null ? (bet.options[bet.winnerIdx]?.label || "?") : "Push";
+        html += `<div style="font-size:12px;color:#888;">Result: ${w}</div>`;
       }
       html += `</div>`;
     });
-  }
 
-  // ── LEADERBOARD ──
-  if (activeTab === "leaderboard") {
-    leaderboard.forEach((entry, rank) => {
-      const playerBetsAll = bets.filter(b => b.player === entry.player);
-      const wonBets  = playerBetsAll.filter(b => b.status === "won");
-      const lostBets = playerBetsAll.filter(b => b.status === "lost");
-      const pushBets = playerBetsAll.filter(b => b.status === "push");
-      const pendBets = playerBetsAll.filter(b => b.status === "pending");
-      const pendAmt     = pendBets.reduce((s,b) => s + b.wager, 0);
-      const pendPotential = entry.balance + pendBets.reduce((s,b) => s + b.wager + b.toWin, 0);
-      const record = `(${wonBets.length}-${lostBets.length}-${pushBets.length})`;
+    html += `</div>`;
+  });
 
-      html += `<div class="lb-row" style="border-left:4px solid ${PLAYER_COLORS[entry.idx]};display:flex;align-items:center;gap:10px;padding:12px 14px;">
-        <div style="font-size:16px;font-weight:600;color:#ccc;min-width:28px;">#${rank+1}</div>
-        <div style="background:${PLAYER_BG[entry.idx]};color:${PLAYER_COLORS[entry.idx]};width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:12px;flex-shrink:0;">${PLAYER_INITIALS[entry.idx]}</div>
-        <div style="flex:1;min-width:0;">
-          <div style="font-weight:700;font-size:15px;">${entry.player}</div>
-          <div style="font-size:12px;color:#888;margin-top:1px;">${record}</div>
-        </div>
-        ${pendBets.length > 0 ? `<div style="text-align:center;padding:0 12px;border-left:1px solid #eee;border-right:1px solid #eee;">
-          <div style="font-size:10px;font-weight:600;color:#185FA5;margin-bottom:3px;">Pending Statistics</div>
-          <div style="display:flex;gap:14px;">
-            <span style="text-align:center;">
-              <div style="font-size:10px;color:#185FA5;font-weight:600;text-decoration:underline;">Bets</div>
-              <div style="font-size:13px;font-weight:700;color:#185FA5;">${pendBets.length}</div>
-            </span>
-            <span style="text-align:center;">
-              <div style="font-size:10px;color:#185FA5;font-weight:600;text-decoration:underline;">Shares</div>
-              <div style="font-size:13px;font-weight:700;color:#185FA5;">${pendAmt.toLocaleString()}</div>
-            </span>
-            <span style="text-align:center;">
-              <div style="font-size:10px;color:#185FA5;font-weight:600;text-decoration:underline;">Potential</div>
-              <div style="font-size:13px;font-weight:700;color:#185FA5;">${pendPotential.toLocaleString()}</div>
-            </span>
-          </div>
-        </div>` : `<div style="padding:0 12px;border-left:1px solid #eee;border-right:1px solid #eee;color:#ccc;font-size:12px;">No pending bets</div>`}
-        <div style="font-weight:700;font-size:20px;min-width:60px;text-align:right;">${entry.balance.toLocaleString()}</div>
-      </div>`;
-    });
+  return html;
+}
 
-  }
+// ─────────── WIRING ───────────
+function wireLogin() {
+  app.querySelectorAll(".player-btn").forEach(btn => {
+    btn.addEventListener("click", () => { pinSel = btn.dataset.player; render(); });
+  });
+  const pin = document.getElementById("pin");
+  pin?.addEventListener("input", e => { pinVal = e.target.value; });
+  document.getElementById("login-go")?.addEventListener("click", tryLogin);
+  pin?.addEventListener("keydown", e => { if (e.key === "Enter") tryLogin(); });
+}
 
+function tryLogin() {
+  if (!pinSel) { document.getElementById("login-err").textContent = "Select a player."; return; }
+  if (pinVal !== PINS[pinSel]) { document.getElementById("login-err").textContent = "Wrong PIN."; return; }
+  currentPlayer = pinSel; pinVal = "";
+  sessionStorage.setItem("gsPlayer", currentPlayer);
+  ensureBalance(currentPlayer);
+  subscribe();
+  render();
+}
 
-  // ── AUDIT TAB ──
-  if (activeTab === "audit") {
-    const INITIAL = 3500;
-    const settled = bets.filter(b => ['won','lost','push'].includes(b.status) && !b.isSoftball);
+async function ensureBalance(player) {
+  const ref = doc(db, "custom_balances", player);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) await setDoc(ref, { amount: 0 });
+}
 
-    html += '<div style="font-size:11px;color:#888;margin-bottom:10px;">All settled bets in chronological order. Balances calculated from bet history starting at 3,500 shares each.</div>';
+let betRowCount = 0;
 
-    for (const player of PLAYERS) {
-      const playerBets = settled
-        .filter(b => b.player === player)
-        .sort((a,b) => {
-          const ta = a.createdAt?.toMillis ? a.createdAt.toMillis() : (a.createdAt?.seconds ? a.createdAt.seconds*1000 : 0);
-          const tb = b.createdAt?.toMillis ? b.createdAt.toMillis() : (b.createdAt?.seconds ? b.createdAt.seconds*1000 : 0);
-          return ta - tb;
-        });
-
-      let running = INITIAL;
-      const pi = PLAYERS.indexOf(player);
-
-      html += '<div style="margin-bottom:20px;">';
-      html += '<div style="font-weight:700;font-size:13px;color:' + PLAYER_COLORS[pi] + ';margin-bottom:6px;border-bottom:2px solid ' + PLAYER_COLORS[pi] + ';padding-bottom:4px;">' + player + ' — ' + playerBets.length + ' settled bets</div>';
-      html += '<div style="overflow-x:auto;">';
-      html += '<table style="width:100%;border-collapse:collapse;font-size:11px;">';
-      html += '<thead><tr style="background:#f5f5f5;color:#666;">' +
-        '<th style="text-align:left;padding:4px 6px;">Date</th>' +
-        '<th style="text-align:left;padding:4px 6px;">Match</th>' +
-        '<th style="text-align:left;padding:4px 6px;">Bet</th>' +
-        '<th style="text-align:left;padding:4px 6px;">Pick</th>' +
-        '<th style="text-align:right;padding:4px 6px;">Wager</th>' +
-        '<th style="text-align:right;padding:4px 6px;">To Win</th>' +
-        '<th style="text-align:center;padding:4px 6px;">Result</th>' +
-        '<th style="text-align:right;padding:4px 6px;">+/−</th>' +
-        '<th style="text-align:right;padding:4px 6px;">Balance</th>' +
-        '</tr></thead><tbody>';
-
-      for (const bet of playerBets) {
-        const ts = bet.createdAt?.toDate ? bet.createdAt.toDate().toLocaleString('en-US',{
-          timeZone:'America/Chicago', month:'2-digit', day:'2-digit',
-          hour:'2-digit', minute:'2-digit', hour12:true
-        }) : '';
-
-        let change = 0;
-        let resColor = '#888';
-        let resLabel = bet.status;
-        if (bet.status === 'won')  { change = bet.toWin;   resColor = '#3B6D11'; resLabel = '✓ Won';  }
-        if (bet.status === 'lost') { change = -bet.wager;  resColor = '#A32D2D'; resLabel = '✗ Lost'; }
-        if (bet.status === 'push') { change = 0;           resColor = '#C86A00'; resLabel = '~ Push'; }
-        running += change;
-
-        const changeStr = (change > 0 ? '+' : '') + change;
-        const rowBg = bet.status === 'won' ? '#f6fcf0' : bet.status === 'lost' ? '#fdf0f0' : '#fffbf0';
-
-        html += '<tr style="background:' + rowBg + ';border-bottom:1px solid #eee;">' +
-          '<td style="padding:4px 6px;white-space:nowrap;color:#888;">' + ts + '</td>' +
-          '<td style="padding:4px 6px;">' + (bet.matchLabel||'').slice(0,22) + '</td>' +
-          '<td style="padding:4px 6px;">' + (bet.betType||'').slice(0,12) + '</td>' +
-          '<td style="padding:4px 6px;">' + (bet.optionLabel||'').slice(0,14) + '</td>' +
-          '<td style="padding:4px 6px;text-align:right;">' + bet.wager + '</td>' +
-          '<td style="padding:4px 6px;text-align:right;">' + bet.toWin + '</td>' +
-          '<td style="padding:4px 6px;text-align:center;color:' + resColor + ';font-weight:600;">' + resLabel + '</td>' +
-          '<td style="padding:4px 6px;text-align:right;color:' + resColor + ';font-weight:600;">' + changeStr + '</td>' +
-          '<td style="padding:4px 6px;text-align:right;font-weight:700;">' + running + '</td>' +
-          '</tr>';
-      }
-
-      html += '<tr style="background:#f5f5f5;font-weight:700;">' +
-        '<td colspan="7" style="padding:6px;text-align:right;">Final Balance</td>' +
-        '<td style="padding:6px;text-align:right;color:' + (running >= INITIAL ? '#3B6D11':'#A32D2D') + ';">' + (running > INITIAL ? '+':'') + (running - INITIAL) + '</td>' +
-        '<td style="padding:6px;text-align:right;font-size:13px;">' + running + '</td>' +
-        '</tr>';
-
-      html += '</tbody></table></div></div>';
-    }
-  }
-
-  html += `</div>`;  // close whatever tab div — actually we didn't open one, so fine
-  app.innerHTML = html;
-
-  // ── Event listeners ──
-  document.getElementById("logout-btn")?.addEventListener("click", () => {
-    currentPlayer = null; selected = null; wagerVal = "";
+function wireMain() {
+  document.getElementById("logout")?.addEventListener("click", () => {
+    currentPlayer = null;
     sessionStorage.removeItem("gsPlayer");
-    if(unsubBets) unsubBets(); if(unsubBalances) unsubBalances();
+    if (unsubEvents) unsubEvents(); if (unsubBets) unsubBets(); if (unsubBals) unsubBals();
     render();
   });
 
-  app.querySelectorAll(".tab-btn").forEach(btn => {
-    btn.addEventListener("click", () => {
-      activeTab = btn.dataset.tab;
-      selected = null; wagerVal = ""; wagerError = "";
-      render();
+  app.querySelectorAll(".tab").forEach(t => {
+    t.addEventListener("click", () => { activeTab = t.dataset.tab; selected = null; render(); });
+  });
+
+  // Option pill click → open bet slip
+  app.querySelectorAll(".opt-pill").forEach(pill => {
+    pill.addEventListener("click", () => {
+      if (pill.dataset.locked === "1") return;
+      selected = {
+        eventId: pill.dataset.event,
+        betIdx: parseInt(pill.dataset.bidx),
+        optIdx: parseInt(pill.dataset.oidx),
+        odds: parseInt(pill.dataset.odds),
+        label: pill.dataset.label,
+        betLabel: pill.dataset.betlabel,
+        eventTitle: pill.dataset.eventtitle,
+      };
+      showSlip();
     });
   });
 
-  app.querySelectorAll(".bt-pill").forEach(btn => {
-    btn.addEventListener("click", () => {
-      betType = btn.dataset.bt; selected = null; wagerVal = ""; wagerError = "";
-      try { render(); } catch(e) {
-        console.error("render error on betType change:", e);
-        document.getElementById("app").innerHTML = '<div style="padding:20px;color:red;">Error: ' + e.message + '</div>';
-      }
-    });
-  });
+  // ── Commissioner: manage tab ──
+  if (activeTab === "manage" && currentPlayer === COMMISSIONER) {
+    betRowCount = 0;
+    addBetRow(); // start with one bet row
 
-  app.querySelectorAll(".odds-pill:not(.disabled)").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const matchId = btn.dataset.match, optKey = btn.dataset.opt;
-      if (selected && selected.matchId===matchId && selected.optionKey===optKey) {
-        selected = null; wagerVal = ""; wagerError = "";
-      } else {
-        selected = { matchId, optionKey: optKey };
-        wagerVal = ""; wagerError = "";
-      }
-      render();
-    });
-  });
+    document.getElementById("add-bet-row")?.addEventListener("click", addBetRow);
+    document.getElementById("create-event")?.addEventListener("click", createEvent);
 
-  const wi = document.getElementById("wager-input");
-  if (wi) {
-    wi.addEventListener("input", e => {
-      wagerVal = e.target.value;
-      wagerError = "";
-      const amt = parseInt(wagerVal, 10) || 0;
-      const calcsEl = document.getElementById("slip-calcs");
-      const errEl   = document.getElementById("slip-error");
-      if (errEl) errEl.textContent = "";
-      if (calcsEl && selectedOpt) {
-        if (amt > 0) {
-          const tw = calcPayout(amt, selectedOpt.odds);
-          calcsEl.style.display = "flex";
-          calcsEl.innerHTML =
-            "<span>Wager: <strong>" + amt.toLocaleString() + "</strong></span>" +
-            "<span>To win: <strong class=\"green\">" + tw.toLocaleString() + "</strong></span>" +
-            "<span>Return: <strong>" + (amt + tw).toLocaleString() + "</strong></span>";
-        } else {
-          calcsEl.style.display = "none";
+    // Save balances
+    document.getElementById("save-balances")?.addEventListener("click", async () => {
+      const inputs = app.querySelectorAll(".bal-edit");
+      for (const input of inputs) {
+        const player = input.dataset.player;
+        const val = parseInt(input.value);
+        if (isNaN(val)) { toast("Invalid balance for " + player, "error"); return; }
+        if ((cBalances[player] ?? 0) !== val) {
+          await setDoc(doc(db, "custom_balances", player), { amount: val });
         }
       }
+      toast("✓ Balances saved");
+    });
+
+    // Edit event
+    app.querySelectorAll("[data-editev]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        editingEventId = btn.dataset.editev;
+        render();
+      });
+    });
+
+    document.getElementById("cancel-edit")?.addEventListener("click", () => {
+      editingEventId = null;
+      render();
+    });
+
+    document.getElementById("save-edit")?.addEventListener("click", async () => {
+      const evId = document.getElementById("save-edit").dataset.evid;
+      const ev = events.find(e => e.id === evId);
+      if (!ev) return;
+
+      const newTitle = document.getElementById("edit-title")?.value.trim();
+      const startRaw = document.getElementById("edit-start")?.value;
+      const newStart = startRaw ? new Date(startRaw).getTime() : null;
+      if (!newTitle) { toast("Title cannot be empty.", "error"); return; }
+
+      // Rebuild bets array with edited values
+      const newBets = (ev.bets || []).map((bet, bIdx) => {
+        const labelInput = document.querySelector(`.edit-bet-label[data-bidx="${bIdx}"]`);
+        const newBet = { ...bet, label: labelInput?.value.trim() || bet.label };
+        newBet.options = (bet.options || []).map((opt, oIdx) => {
+          const lblEl = document.querySelector(`.edit-opt-label[data-bidx="${bIdx}"][data-oidx="${oIdx}"]`);
+          const oddsEl = document.querySelector(`.edit-opt-odds[data-bidx="${bIdx}"][data-oidx="${oIdx}"]`);
+          const newOpt = { ...opt };
+          if (lblEl && !lblEl.disabled && lblEl.value.trim()) newOpt.label = lblEl.value.trim();
+          if (oddsEl && !oddsEl.disabled) {
+            const v = parseInt(oddsEl.value);
+            if (!isNaN(v)) newOpt.odds = v;
+          }
+          return newOpt;
+        });
+        return newBet;
+      });
+
+      await updateDoc(doc(db, "custom_events", evId), {
+        title: newTitle,
+        startTime: newStart,
+        subtitle: newStart ? fmtDateLabel(newStart) : (ev.subtitle || ""),
+        bets: newBets,
+      });
+
+      editingEventId = null;
+      toast("✓ Event updated");
+      render();
+    });
+
+    app.querySelectorAll("[data-lockev]").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const locked = btn.dataset.locked === "1";
+        await updateDoc(doc(db, "custom_events", btn.dataset.lockev), { locked: !locked });
+        toast(locked ? "Unlocked." : "Locked.", "success");
+      });
+    });
+
+    app.querySelectorAll("[data-delev]").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        if (!confirm("Delete this event? Pending bets will be refunded.")) return;
+        const evId = btn.dataset.delev;
+        const evBets = cBets.filter(b => b.eventId === evId && b.status === "pending");
+        for (const b of evBets) {
+          const cur = cBalances[b.player] ?? 0;
+          await setDoc(doc(db, "custom_balances", b.player), { amount: cur + b.wager });
+          await updateDoc(doc(db, "custom_bets", b.id), { status: "deleted" });
+        }
+        await deleteDoc(doc(db, "custom_events", evId));
+        toast("Event deleted, pending bets refunded.");
+      });
+    });
+
+    // Settle a bet: mark winner
+    app.querySelectorAll("[data-settleev]").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const evId = btn.dataset.settleev;
+        const bIdx = parseInt(btn.dataset.bidx);
+        const oIdx = parseInt(btn.dataset.oidx);
+        const ev = events.find(e => e.id === evId);
+        const bet = ev?.bets?.[bIdx];
+        if (!bet) return;
+        if (!confirm(`Settle "${bet.label}" — winner: ${bet.options[oIdx].label}?`)) return;
+
+        // Settle all player bets on this bet
+        const playerBets = cBets.filter(b => b.eventId === evId && b.betIdx === bIdx && b.status === "pending");
+        for (const b of playerBets) {
+          const result = b.optIdx === oIdx ? "won" : "lost";
+          await updateDoc(doc(db, "custom_bets", b.id), { status: result });
+          if (result === "won") {
+            const cur = cBalances[b.player] ?? 0;
+            await setDoc(doc(db, "custom_balances", b.player), { amount: cur + b.wager + b.toWin });
+          }
+        }
+
+        // Mark bet as settled in the event
+        const newBets = [...ev.bets];
+        newBets[bIdx] = { ...bet, settled: true, winnerIdx: oIdx };
+        await updateDoc(doc(db, "custom_events", evId), { bets: newBets });
+        toast(`✓ Settled: ${bet.options[oIdx].label} wins (${playerBets.length} bets)`);
+      });
+    });
+
+    // Push a bet: refund everyone
+    app.querySelectorAll("[data-pushev]").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const evId = btn.dataset.pushev;
+        const bIdx = parseInt(btn.dataset.bidx);
+        const ev = events.find(e => e.id === evId);
+        const bet = ev?.bets?.[bIdx];
+        if (!bet) return;
+        if (!confirm(`Push "${bet.label}" — refund all wagers?`)) return;
+
+        const playerBets = cBets.filter(b => b.eventId === evId && b.betIdx === bIdx && b.status === "pending");
+        for (const b of playerBets) {
+          await updateDoc(doc(db, "custom_bets", b.id), { status: "push" });
+          const cur = cBalances[b.player] ?? 0;
+          await setDoc(doc(db, "custom_balances", b.player), { amount: cur + b.wager });
+        }
+
+        const newBets = [...ev.bets];
+        newBets[bIdx] = { ...bet, settled: true, winnerIdx: null };
+        await updateDoc(doc(db, "custom_events", evId), { bets: newBets });
+        toast(`Push — ${playerBets.length} wagers refunded`);
+      });
     });
   }
+}
 
-  document.getElementById("place-btn")?.addEventListener("click", placeBet);
+function addBetRow() {
+  const container = document.getElementById("bet-builder");
+  if (!container) return;
+  const idx = betRowCount++;
+  const div = document.createElement("div");
+  div.className = "comm-add-bet";
+  div.innerHTML = `
+    <label>Bet ${idx+1} Label</label>
+    <input class="bb-label" data-idx="${idx}" placeholder="e.g. Moneyline / R3 to Homer / Total Runs O/U 27.5" />
+    <div class="bb-options" data-idx="${idx}">
+      <div class="comm-opt-row">
+        <input class="bb-opt-label" placeholder="Option label (e.g. Nice Ash)" />
+        <input class="bb-opt-odds" placeholder="Odds (e.g. -150)" style="max-width:110px;" />
+      </div>
+      <div class="comm-opt-row">
+        <input class="bb-opt-label" placeholder="Option label (leave blank if N/A)" />
+        <input class="bb-opt-odds" placeholder="Odds" style="max-width:110px;" />
+      </div>
+    </div>
+    <button class="btn-gray bb-add-opt" data-idx="${idx}" style="margin-top:6px;font-size:11px;">+ Add Option</button>
+  `;
+  container.appendChild(div);
 
-  document.getElementById("inject-bets-btn")?.addEventListener("click", forceInjectBets);
-
-  // Refresh Odds button
-  document.getElementById("refresh-odds-btn")?.addEventListener("click", async () => {
-    const btn    = document.getElementById("refresh-odds-btn");
-    const status = document.getElementById("refresh-odds-status");
-    btn.disabled = true;
-    btn.textContent = "Triggering...";
-    try {
-      const tokenDoc = await getDoc(doc(db, "meta", "github"));
-      const ghToken  = tokenDoc?.data()?.workflowToken;
-      if (!ghToken) { status.textContent = "⚠ No token configured."; btn.disabled = false; btn.textContent = "🔄 Refresh Odds Now"; return; }
-      const res = await fetch("https://api.github.com/repos/hamiltonra25/goonsquad/actions/workflows/fetch-odds.yml/dispatches", {
-        method: "POST",
-        headers: { "Authorization": "Bearer " + ghToken, "Accept": "application/vnd.github+json", "Content-Type": "application/json" },
-        body: JSON.stringify({ ref: "main" }),
-      });
-      status.textContent = res.status === 204 ? "✓ Odds refresh triggered!" : "✗ Error " + res.status;
-      status.style.color = res.status === 204 ? "#3B6D11" : "#A32D2D";
-    } catch(err) { status.textContent = "✗ " + err.message; status.style.color = "#A32D2D"; }
-    btn.disabled = false;
-    btn.textContent = "🔄 Refresh Odds Now";
+  div.querySelector(".bb-add-opt").addEventListener("click", () => {
+    const optsDiv = div.querySelector(".bb-options");
+    const row = document.createElement("div");
+    row.className = "comm-opt-row";
+    row.innerHTML = `
+      <input class="bb-opt-label" placeholder="Option label" />
+      <input class="bb-opt-odds" placeholder="Odds" style="max-width:110px;" />
+    `;
+    optsDiv.appendChild(row);
   });
+}
 
-  // Force Score Update button
-  document.getElementById("refresh-scores-btn")?.addEventListener("click", async () => {
-    const btn    = document.getElementById("refresh-scores-btn");
-    const status = document.getElementById("refresh-scores-status");
-    btn.disabled = true;
-    btn.textContent = "Updating...";
-    status.textContent = "";
-    try {
-      const tokenDoc = await getDoc(doc(db, "meta", "github"));
-      const ghToken  = tokenDoc?.data()?.workflowToken;
-      if (!ghToken) { status.textContent = "⚠ No token configured."; btn.disabled = false; btn.textContent = "⚽ Force Score Update"; return; }
-      const res = await fetch("https://api.github.com/repos/hamiltonra25/goonsquad/actions/workflows/settle-scores.yml/dispatches", {
-        method: "POST",
-        headers: { "Authorization": "Bearer " + ghToken, "Accept": "application/vnd.github+json", "Content-Type": "application/json" },
-        body: JSON.stringify({ ref: "main" }),
-      });
-      status.textContent = res.status === 204 ? "✓ Score update triggered — ~30 sec" : "✗ Error " + res.status;
-      status.style.color = res.status === 204 ? "#3B6D11" : "#A32D2D";
-    } catch(err) {
-      status.textContent = "✗ " + err.message;
-      status.style.color = "#A32D2D";
-    }
-    btn.disabled = false;
-    btn.textContent = "⚽ Force Score Update";
-  });
+function fmtDateLabel(ms) {
+  if (!ms) return "";
+  return new Date(ms).toLocaleString("en-US", {
+    timeZone: "America/Chicago",
+    weekday: "short", month: "short", day: "numeric",
+    hour: "numeric", minute: "2-digit", hour12: true
+  }).replace(",", " ·") + " CT";
+}
 
-  // Edit score toggle buttons
-  app.querySelectorAll(".edit-score-btn").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const formId = "edit-form-" + btn.dataset.match;
-      const form = document.getElementById(formId);
-      if (form) form.style.display = form.style.display === "none" ? "block" : "none";
+function toDatetimeLocal(ms) {
+  if (!ms) return "";
+  const d = new Date(ms);
+  const pad = n => String(n).padStart(2, "0");
+  return d.getFullYear() + "-" + pad(d.getMonth()+1) + "-" + pad(d.getDate()) + "T" + pad(d.getHours()) + ":" + pad(d.getMinutes());
+}
+
+async function createEvent() {
+  const title = document.getElementById("ev-title")?.value.trim();
+  const startRaw = document.getElementById("ev-start")?.value;
+  const startTime = startRaw ? new Date(startRaw).getTime() : null;
+  const subtitle = startTime ? fmtDateLabel(startTime) : "";
+  if (!title) { toast("Enter an event title.", "error"); return; }
+
+  const bets = [];
+  document.querySelectorAll(".comm-add-bet").forEach(betDiv => {
+    const label = betDiv.querySelector(".bb-label")?.value.trim();
+    if (!label) return;
+    const options = [];
+    betDiv.querySelectorAll(".comm-opt-row").forEach(row => {
+      const optLabel = row.querySelector(".bb-opt-label")?.value.trim();
+      const optOdds  = parseInt(row.querySelector(".bb-opt-odds")?.value.trim());
+      if (optLabel && !isNaN(optOdds)) options.push({ label: optLabel, odds: optOdds });
     });
+    if (options.length > 0) bets.push({ label, options, settled: false, winnerIdx: null });
   });
 
-  // ── Settle button (first-time score entry) ──
-  MATCHES.forEach(m => {
-    const settleBtn = document.getElementById("settle-" + m.id);
-    if (!settleBtn) return;
+  if (bets.length === 0) { toast("Add at least one bet with options.", "error"); return; }
 
-    // Live preview
-    const hsEl = document.getElementById("hs-" + m.id);
-    const asEl = document.getElementById("as-" + m.id);
-    const previewEl = document.getElementById("preview-" + m.id);
+  await addDoc(collection(db, "custom_events"), {
+    title, subtitle, startTime,
+    bets,
+    locked: false,
+    archived: false,
+    createdAt: Date.now(),
+  });
+  toast("🎯 Event created!");
+  activeTab = "events";
+  render();
+}
 
-    const updatePreview = () => {
-      if (!previewEl) return;
-      const hs  = parseInt(hsEl?.value, 10);
-      const as2 = parseInt(asEl?.value, 10);
-      if (isNaN(hs) || isNaN(as2)) { previewEl.innerHTML = ""; return; }
-      const matchBets = bets.filter(b => b.matchId === m.id && b.status === "pending");
-      if (matchBets.length === 0) { previewEl.innerHTML = ""; return; }
-      const lines = matchBets.map(b => {
-        const res = resolveKey(b.optionKey, b.betType, hs, as2, m);
-        const col = res === "won" ? "#3B6D11" : res === "push" ? "#C86A00" : "#A32D2D";
-        return `<span style="color:${col};font-size:11px;">${b.player} ${b.optionLabel} → ${res}</span>`;
-      });
-      previewEl.innerHTML = lines.join(" &nbsp;|&nbsp; ");
-    };
+function showSlip() {
+  const existing = document.querySelector(".slip");
+  if (existing) existing.remove();
+  if (!selected) return;
 
-    hsEl?.addEventListener("input", updatePreview);
-    asEl?.addEventListener("input", updatePreview);
+  const slip = document.createElement("div");
+  slip.className = "slip";
+  slip.innerHTML = `<div class="slip-inner">
+    <div class="slip-head">
+      <div><strong>${selected.label}</strong> ${fmtOdds(selected.odds)}<br>
+      <span style="font-size:11px;color:#888;">${selected.eventTitle} — ${selected.betLabel}</span></div>
+      <button class="slip-close" id="slip-close">✕</button>
+    </div>
+    <div class="slip-row">
+      <input type="number" id="slip-wager" placeholder="Wager amount" min="1" />
+      <button id="slip-place">Place Bet</button>
+    </div>
+    <div class="slip-calc" id="slip-calc"></div>
+    <div class="slip-err" id="slip-err"></div>
+  </div>`;
+  document.body.appendChild(slip);
 
-    settleBtn.addEventListener("click", () => {
-      const hs  = document.getElementById("hs-" + m.id)?.value;
-      const as2 = document.getElementById("as-" + m.id)?.value;
-      if (hs === "" || as2 === "") { toast("Enter both scores first.", "error"); return; }
-      settleMatchByScore(m.id, hs, as2);
-    });
+  const wagerInput = document.getElementById("slip-wager");
+  wagerInput.focus();
+  wagerInput.addEventListener("input", () => {
+    const amt = parseInt(wagerInput.value) || 0;
+    document.getElementById("slip-calc").textContent = amt > 0
+      ? `To win: ${fmtShares(calcPayout(amt, selected.odds))}` : "";
   });
 
-  // ── Re-settle with corrected score ──
-  MATCHES.forEach(m => {
-    const btn = document.getElementById("re-settle-" + m.id);
-    if (!btn) return;
-    btn.addEventListener("click", () => {
-      const hs  = document.getElementById("ehs-" + m.id)?.value;
-      const as2 = document.getElementById("eas-" + m.id)?.value;
-      if (confirm("Reverse all payouts for " + m.home + " vs " + m.away + " and re-settle " + m.home + " " + hs + "–" + as2 + " " + m.away + "?")) {
-        reverseAndResettle(m.id, hs, as2);
-      }
-    });
-  });
+  document.getElementById("slip-close").addEventListener("click", () => { slip.remove(); selected = null; });
 
-  // ── Edit score toggle ──
-  app.querySelectorAll(".edit-score-btn").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const formId = "edit-form-" + btn.dataset.match;
-      const form = document.getElementById(formId);
-      if (form) form.style.display = form.style.display === "none" ? "block" : "none";
-    });
-  });
-} // end renderMain
+  document.getElementById("slip-place").addEventListener("click", async () => {
+    const amt = parseInt(wagerInput.value);
+    if (!amt || amt < 1) { document.getElementById("slip-err").textContent = "Enter a valid wager."; return; }
 
-// ── Commissioner: force-inject bets that were placed before the app was ready ──
-// Writes directly to Firebase without touching balances (balances already reflect these bets)
-async function forceInjectBets() {
-  const toInject = [
-    {
-      player: "Brez",
-      matchId: null, // resolved by name below
-      matchLabel: "Korea Republic vs Czechia",
-      ctLabel: "Thu Jun 11 · 9:00 PM CT",
-      betType: "Total Goals",
-      optionKey: "over",
-      optionLabel: "O 2.5",
-      odds: -115,
-      wager: 1000,
-      toWin: 870,
-    },
-    {
-      player: "AK",
-      matchId: null,
-      matchLabel: "Mexico vs South Africa",
-      ctLabel: "Thu Jun 11 · 2:00 PM CT",
-      betType: "Moneyline",
-      optionKey: "home_win",
-      optionLabel: "Mexico",
-      odds: -235,
-      wager: 235,
-      toWin: 100,
-    },
-    {
-      player: "AK",
-      matchId: null,
-      matchLabel: "Korea Republic vs Czechia",
-      ctLabel: "Thu Jun 11 · 9:00 PM CT",
-      betType: "Moneyline",
-      optionKey: "draw",
-      optionLabel: "Draw",
-      odds: 205,
-      wager: 51,
-      toWin: 105,
-    },
-    {
-      player: "AK",
-      matchId: null,
-      matchLabel: "Korea Republic vs Czechia",
-      ctLabel: "Thu Jun 11 · 9:00 PM CT",
-      betType: "Total Goals",
-      optionKey: "over",
-      optionLabel: "O 2.5",
-      odds: -115,
-      wager: 100,
-      toWin: 87,
-    },
-  ];
+    // Check for existing bet on this exact option
+    const dupe = cBets.find(b => b.player === currentPlayer && b.eventId === selected.eventId &&
+      b.betIdx === selected.betIdx && b.optIdx === selected.optIdx && b.status === "pending");
+    if (dupe) { document.getElementById("slip-err").textContent = "You already bet this option."; return; }
 
-  // Find match IDs from loaded MATCHES — try name match, fall back to label
-  function findMatchId(label) {
-    // Try exact match first
-    let m = MATCHES.find(m => (m.home + " vs " + m.away) === label);
-    if (m) return m.id;
-    // Try partial match on both team names
-    const parts = label.split(" vs ");
-    if (parts.length === 2) {
-      m = MATCHES.find(m =>
-        (m.home.includes(parts[0]) || parts[0].includes(m.home)) &&
-        (m.away.includes(parts[1]) || parts[1].includes(m.away))
-      );
-    }
-    if (m) return m.id;
-    // Last resort — just use the label as the ID
-    console.log("Could not find match ID for:", label, "MATCHES:", MATCHES.map(m=>m.home+"v"+m.away));
-    return label;
-  }
+    const toWin = calcPayout(amt, selected.odds);
+    const cur = cBalances[currentPlayer] ?? 0;
 
-  let count = 0;
-  for (const bet of toInject) {
-    const resolvedId = findMatchId(bet.matchLabel);
-    await addDoc(collection(db, "bets"), {
-      player: bet.player,
-      matchId: resolvedId,
-      matchLabel: bet.matchLabel,
-      ctLabel: bet.ctLabel,
-      betType: bet.betType,
-      optionKey: bet.optionKey,
-      optionLabel: bet.optionLabel,
-      odds: bet.odds,
-      wager: bet.wager,
-      toWin: bet.toWin,
+    await addDoc(collection(db, "custom_bets"), {
+      player: currentPlayer,
+      eventId: selected.eventId,
+      eventTitle: selected.eventTitle,
+      betIdx: selected.betIdx,
+      betLabel: selected.betLabel,
+      optIdx: selected.optIdx,
+      optionLabel: selected.label,
+      odds: selected.odds,
+      wager: amt,
+      toWin,
       status: "pending",
       createdAt: serverTimestamp(),
     });
-    count++;
-  }
-  toast("✓ " + count + " bets injected successfully", "success");
+    await setDoc(doc(db, "custom_balances", currentPlayer), { amount: cur - amt });
+
+    slip.remove();
+    selected = null;
+    toast("🎯 Bet placed!");
+  });
 }
 
-async function deleteBet(betId) {
-  const bet = bets.find(b => b.id === betId);
-  if (!bet) return;
-  const bal = balances[bet.player] ?? INITIAL_SHARES;
-  await updateDoc(doc(db, "bets", betId), { status: "deleted" });
-  await setDoc(doc(db, "balances", bet.player), { amount: bal + bet.wager });
-  toast("Bet deleted and shares refunded.", "success");
+// ─────────── BOOT ───────────
+initFirebase();
+// Restore login from sessionStorage (shared with index.html)
+const savedPlayer = sessionStorage.getItem("gsPlayer");
+if (savedPlayer && PLAYERS.includes(savedPlayer)) {
+  currentPlayer = savedPlayer;
+  ensureBalance(currentPlayer);
+  subscribe();
 }
-
-async function settleMatchByScore(matchId, homeScore, awayScore) {
-  const match = MATCHES.find(m => m.id === matchId);
-  if (!match) return;
-  const hs  = parseInt(homeScore, 10);
-  const as2 = parseInt(awayScore, 10);
-  if (isNaN(hs) || isNaN(as2)) { toast("Invalid scores.", "error"); return; }
-
-  const matchBets = bets.filter(b => b.matchId === matchId && b.status === "pending");
-  for (const bet of matchBets) {
-    const result = resolveKey(bet.optionKey, bet.betType, hs, as2, match);
-    await updateDoc(doc(db, "bets", bet.id), { status: result });
-    const bal = balances[bet.player] ?? INITIAL_SHARES;
-    if (result === "won") {
-      await setDoc(doc(db, "balances", bet.player), { amount: bal + bet.wager + bet.toWin });
-    } else if (result === "push") {
-      await setDoc(doc(db, "balances", bet.player), { amount: bal + bet.wager });
-    }
-  }
-  await setDoc(doc(db, "scores", matchId), { homeScore: hs, awayScore: as2, settledAt: new Date().toISOString() });
-  toast(`✓ Settled: ${match.home} ${hs}–${as2} ${match.away} (${matchBets.length} bets)`, "success");
-}
-
-function resolveKey(optionKey, betType, hs, as2, match) {
-  const diff       = hs - as2;
-  const totalGoals = hs + as2;
-  if (betType === "Moneyline") {
-    if (optionKey === "home_win") return diff > 0 ? "won" : "lost";
-    if (optionKey === "draw")     return diff === 0 ? "won" : "lost";
-    if (optionKey === "away_win") return diff < 0 ? "won" : "lost";
-  }
-  if (betType === "Tie No Bet") {
-    if (diff === 0) return "push";
-    if (optionKey === "tnb_home") return diff > 0 ? "won" : "lost";
-    if (optionKey === "tnb_away") return diff < 0 ? "won" : "lost";
-  }
-  if (betType === "Total Goals") {
-    const line = match?.total?.line ?? 2.5;
-    if (totalGoals === line) return "push";
-    if (optionKey === "over")  return totalGoals > line ? "won" : "lost";
-    if (optionKey === "under") return totalGoals < line ? "won" : "lost";
-  }
-  if (betType === "Double Chance") {
-    if (optionKey === "dc_1x") return diff >= 0 ? "won" : "lost";
-    if (optionKey === "dc_x2") return diff <= 0 ? "won" : "lost";
-    if (optionKey === "dc_12") return diff !== 0 ? "won" : "lost";
-  }
-  return "lost";
-}
-
-async function reverseAndResettle(matchId, newHomeScore, newAwayScore) {
-  const match = MATCHES.find(m => m.id === matchId);
-  if (!match) return;
-  const hs  = parseInt(newHomeScore, 10);
-  const as2 = parseInt(newAwayScore, 10);
-  if (isNaN(hs) || isNaN(as2)) { toast("Enter valid scores.", "error"); return; }
-
-  const matchBets = bets.filter(b => b.matchId === matchId && b.status !== "pending");
-  for (const bet of matchBets) {
-    const bal = balances[bet.player] ?? INITIAL_SHARES;
-    if (bet.status === "won") {
-      await setDoc(doc(db, "balances", bet.player), { amount: bal - bet.wager - bet.toWin });
-    } else if (bet.status === "push") {
-      await setDoc(doc(db, "balances", bet.player), { amount: bal - bet.wager });
-    }
-    await updateDoc(doc(db, "bets", bet.id), { status: "pending" });
-  }
-  await new Promise(r => setTimeout(r, 500));
-  await settleMatchByScore(matchId, hs, as2);
-}
-
-function renderBetCard(bet, canSettle) {
-  const statusClass = `status-${bet.status}`;
-  const statusLabel = {pending:"Pending",won:"Won ✓",lost:"Lost ✗",push:"Push ~"}[bet.status];
-  const pi = PLAYERS.indexOf(bet.player);
-  return `
-    <div class="bet-card">
-      <div class="bet-header">
-        <div>
-          <div class="bet-title" style="color:${PLAYER_COLORS[pi]}">${bet.player} · ${bet.matchLabel}</div>
-          <div class="bet-sub">${bet.ctLabel} · ${bet.betType} → ${bet.optionLabel} (${fmt(bet.odds)})</div>
-        </div>
-        <span class="status-badge ${statusClass}">${statusLabel}</span>
-      </div>
-      <div class="bet-amounts">
-        <span>Wagered: <strong>${bet.wager.toLocaleString()}</strong></span>
-        <span>To win: <strong style="color:#3B6D11">${bet.toWin.toLocaleString()}</strong></span>
-      </div>
-      ${bet.status==="pending" && canSettle ? `
-        <div class="settle-row">
-          <span class="settle-label">Settle:</span>
-          ${currentPlayer === "R3" ? `
-            <button class="settle-btn settle-won"  data-id="${bet.id}" data-result="won">Won</button>
-            <button class="settle-btn settle-lost" data-id="${bet.id}" data-result="lost">Lost</button>
-            <button class="settle-btn settle-push" data-id="${bet.id}" data-result="push">Push</button>
-            <button class="settle-btn settle-delete delete-btn" data-id="${bet.id}">Delete & refund</button>
-          ` : ""}
-        </div>` : ""}
-    </div>`;
-}
-
-// ── Boot ──
-if (isConfigured()) {
-  initFirebase();
-  // Restore login from sessionStorage (shared with custom.html)
-  const savedPlayer = sessionStorage.getItem("gsPlayer");
-  if (savedPlayer && PLAYERS.includes(savedPlayer)) {
-    currentPlayer = savedPlayer;
-    ensureBalance(currentPlayer).then(() => { subscribe(); render(); });
-  }
-  render();
-} else {
-  render();
-}
+render();
 </script>
 </body>
 </html>
