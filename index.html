@@ -509,10 +509,13 @@ function renderManage() {
         (bet.options||[]).forEach((opt, oIdx) => {
           html += `<button class="btn-green" data-settleev="${ev.id}" data-bidx="${bIdx}" data-oidx="${oIdx}">${opt.label} Won</button>`;
         });
+        html += `<button class="btn-red" data-losev="${ev.id}" data-bidx="${bIdx}">No — all lose</button>`;
         html += `<button class="btn-orange" data-pushev="${ev.id}" data-bidx="${bIdx}">Push (refund all)</button>`;
         html += `</div>`;
       } else {
-        const w = bet.winnerIdx != null ? (bet.options[bet.winnerIdx]?.label || "?") : "Push";
+        const w = bet.winnerIdx === -1 ? "No winner — all lost"
+                : bet.winnerIdx != null ? (bet.options[bet.winnerIdx]?.label || "?")
+                : "Push";
         html += `<div style="font-size:12px;color:#888;">Result: ${w}</div>`;
       }
       html += `</div>`;
@@ -707,6 +710,29 @@ function wireMain() {
         newBets[bIdx] = { ...bet, settled: true, winnerIdx: oIdx };
         await updateDoc(doc(db, "custom_events", evId), { bets: newBets });
         toast(`✓ Settled: ${bet.options[oIdx].label} wins (${playerBets.length} bets)`);
+      });
+    });
+
+    // No winner: every bet on this line loses
+    app.querySelectorAll("[data-losev]").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const evId = btn.dataset.losev;
+        const bIdx = parseInt(btn.dataset.bidx);
+        const ev = events.find(e => e.id === evId);
+        const bet = ev?.bets?.[bIdx];
+        if (!bet) return;
+        if (!confirm(`Settle "${bet.label}" as NO WINNER? Every bet on this line loses.`)) return;
+
+        const playerBets = cBets.filter(b => b.eventId === evId && b.betIdx === bIdx && b.status === "pending");
+        for (const b of playerBets) {
+          // Wager was already deducted when placed — no balance change on a loss
+          await updateDoc(doc(db, "custom_bets", b.id), { status: "lost" });
+        }
+
+        const newBets = [...ev.bets];
+        newBets[bIdx] = { ...bet, settled: true, winnerIdx: -1 };
+        await updateDoc(doc(db, "custom_events", evId), { bets: newBets });
+        toast(`Settled — no winner (${playerBets.length} bets lost)`);
       });
     });
 
