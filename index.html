@@ -483,6 +483,8 @@ function renderManage() {
         html += `</div>`;
       });
 
+      html += `<div id="edit-new-bets"></div>`;
+      html += `<button class="btn-gray" id="edit-add-bet" style="margin-top:10px;">+ Add Bet</button>`;
       html += `<div style="display:flex;gap:8px;margin-top:12px;">
         <button class="btn-blue" id="save-edit" data-evid="${ev.id}" style="flex:1;">Save Changes</button>
         <button class="btn-gray" id="cancel-edit">Cancel</button>
@@ -620,6 +622,42 @@ function wireMain() {
       render();
     });
 
+    // Add a brand-new bet to an existing event while editing
+    let editNewCount = 0;
+    document.getElementById("edit-add-bet")?.addEventListener("click", () => {
+      const container = document.getElementById("edit-new-bets");
+      if (!container) return;
+      const idx = editNewCount++;
+      const div = document.createElement("div");
+      div.className = "comm-add-bet edit-new-bet";
+      div.innerHTML = `
+        <label>New Bet Label</label>
+        <input class="enb-label" placeholder="e.g. R3 to steal a base" />
+        <div class="enb-options">
+          <div class="comm-opt-row">
+            <input class="enb-opt-label" placeholder="Option label" />
+            <input class="enb-opt-odds" placeholder="Odds" style="max-width:110px;" />
+          </div>
+          <div class="comm-opt-row">
+            <input class="enb-opt-label" placeholder="Option label (optional)" />
+            <input class="enb-opt-odds" placeholder="Odds" style="max-width:110px;" />
+          </div>
+        </div>
+        <button class="btn-gray enb-add-opt" style="margin-top:6px;font-size:11px;">+ Add Option</button>
+      `;
+      container.appendChild(div);
+      div.querySelector(".enb-add-opt").addEventListener("click", () => {
+        const opts = div.querySelector(".enb-options");
+        const row = document.createElement("div");
+        row.className = "comm-opt-row";
+        row.innerHTML = `
+          <input class="enb-opt-label" placeholder="Option label" />
+          <input class="enb-opt-odds" placeholder="Odds" style="max-width:110px;" />
+        `;
+        opts.appendChild(row);
+      });
+    });
+
     document.getElementById("save-edit")?.addEventListener("click", async () => {
       const evId = document.getElementById("save-edit").dataset.evid;
       const ev = events.find(e => e.id === evId);
@@ -646,6 +684,19 @@ function wireMain() {
           return newOpt;
         });
         return newBet;
+      });
+
+      // Append any newly-added bets
+      document.querySelectorAll(".edit-new-bet").forEach(betDiv => {
+        const label = betDiv.querySelector(".enb-label")?.value.trim();
+        if (!label) return;
+        const options = [];
+        betDiv.querySelectorAll(".comm-opt-row").forEach(row => {
+          const ol = row.querySelector(".enb-opt-label")?.value.trim();
+          const oo = parseInt(row.querySelector(".enb-opt-odds")?.value.trim());
+          if (ol && !isNaN(oo)) options.push({ label: ol, odds: oo });
+        });
+        if (options.length > 0) newBets.push({ label, options, settled: false, winnerIdx: null });
       });
 
       await updateDoc(doc(db, "custom_events", evId), {
