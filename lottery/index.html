@@ -1,1 +1,1250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Draft Lottery</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --studio:#080d17; --steel:#7d8a9c; --brass:#c9a227; --brass-lt:#e7c964;
+  --ink:#eef2f7; --ink-dim:#8695a8; --line:rgba(125,138,156,.22);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  background:radial-gradient(1100px 620px at 50% -8%,#1b2740 0%,transparent 62%),var(--studio);
+  color:var(--ink);font-family:'IBM Plex Sans',system-ui,sans-serif;
+  padding:24px 16px 48px;-webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1180px;margin:0 auto}
+#crash{display:none;margin-bottom:18px;padding:12px 14px;border-radius:3px;background:rgba(160,50,50,.16);border:1px solid rgba(220,90,90,.45);color:#ff9a9a;font-family:'IBM Plex Mono',monospace;font-size:11px;line-height:1.6}
 
+.masthead{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;padding-bottom:14px;margin-bottom:26px;border-bottom:1px solid var(--line)}
+.brand h1{font-family:'Bebas Neue',Impact,sans-serif;font-size:clamp(32px,5vw,54px);letter-spacing:.045em;line-height:.94}
+.brand h1 em{font-style:normal;color:var(--brass)}
+.brand p{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-dim);margin-top:8px}
+.seal{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;border:1px solid var(--line);border-radius:2px;padding:8px 12px;color:var(--ink-dim);white-space:nowrap}
+.seal b{display:block;color:var(--brass);font-size:15px;letter-spacing:.05em;margin-top:3px}
+
+.stage{display:grid;grid-template-columns:minmax(0,580px) minmax(0,1fr);gap:38px;align-items:start}
+.machine{display:flex;flex-direction:column;align-items:center;width:100%}
+canvas{display:block;width:100%;max-width:560px;height:auto;aspect-ratio:560/822;border-radius:10px;border:1px solid rgba(125,138,156,.20);box-shadow:0 24px 70px -34px rgba(0,0,0,.95),inset 0 0 0 1px rgba(255,255,255,.025)}
+.controls{display:flex;gap:10px;width:100%;max-width:560px;margin-top:20px}
+button{font-family:'Bebas Neue',Impact,sans-serif;font-size:19px;letter-spacing:.11em;border:1px solid transparent;border-radius:3px;padding:15px 18px;cursor:pointer;transition:transform .12s,background .18s,border-color .18s}
+button:focus-visible{outline:2px solid var(--brass-lt);outline-offset:3px}
+.btn-draw{flex:1;background:var(--brass);color:#141007;box-shadow:0 10px 26px -12px rgba(201,162,39,.85)}
+.btn-draw:hover:not(:disabled){background:var(--brass-lt);transform:translateY(-1px)}
+.btn-draw:disabled{background:#2b3241;color:#5d6879;box-shadow:none;cursor:not-allowed}
+.btn-ghost{background:transparent;color:var(--ink-dim);border-color:var(--line);padding:15px 22px}
+.btn-ghost:hover{color:var(--ink);border-color:var(--steel)}
+
+.panel{border:1px solid var(--line);border-radius:3px;padding:20px 22px;margin-bottom:18px;background:rgba(17,26,43,.42)}
+.eyebrow{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-dim);display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+
+.called{display:flex;align-items:center;gap:20px;min-height:86px}
+.called .chip{width:78px;height:78px;border-radius:50%;flex:none;display:grid;place-items:center;font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:19px;color:#0d1119;box-shadow:inset -5px -6px 14px rgba(0,0,0,.4),inset 4px 5px 12px rgba(255,255,255,.45),0 12px 26px -10px rgba(0,0,0,.9)}
+.called .name{font-family:'Bebas Neue',Impact,sans-serif;font-size:40px;line-height:1;letter-spacing:.035em}
+.called .sub{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-dim);margin-top:6px}
+.called .idle{font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-dim)}
+.tagline{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;margin-top:8px}
+.tagline.seat{color:#7fe0a8}
+.tagline.dead{color:#5d6879}
+
+/* draft board */
+.board{display:flex;flex-direction:column;gap:1px}
+.slot{display:grid;grid-template-columns:30px 16px 1fr auto;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid rgba(125,138,156,.1);font-size:14px}
+.slot .no{font-family:'Bebas Neue',Impact,sans-serif;font-size:18px;color:var(--brass);letter-spacing:.06em}
+.slot .dot{width:16px;height:16px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(255,255,255,.28)}
+.slot .odds{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink-dim)}
+.slot.open{opacity:.3}
+.slot.open .no{color:var(--ink-dim)}
+.slot.open .dot{background:transparent;border:1px dashed var(--steel)}
+.slot.fresh{animation:pop .45s ease-out}
+@keyframes pop{0%{background:rgba(201,162,39,.28)}100%{background:transparent}}
+
+.pool{display:flex;flex-direction:column}
+.pool-row{display:grid;grid-template-columns:16px 1fr auto auto;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid rgba(125,138,156,.1);font-size:13px}
+.pool-row .dot{width:14px;height:14px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(255,255,255,.28)}
+.pool-row .n{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--ink-dim);min-width:52px;text-align:right}
+.pool-row .pc{font-family:'IBM Plex Mono',monospace;font-size:11px;color:#5d6879;min-width:46px;text-align:right}
+.pool-row.seated{opacity:.34}
+.pool-row.seated .n{text-decoration:line-through}
+
+.ledger{max-height:230px;overflow-y:auto;margin:-4px -6px 0;padding:0 6px}
+.led-row{display:grid;grid-template-columns:30px 18px 1fr auto;align-items:center;gap:11px;padding:8px 0;border-bottom:1px solid rgba(125,138,156,.1);font-size:13px}
+.led-row .pick,.led-row .code{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink-dim)}
+.led-row .dot{width:14px;height:14px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(255,255,255,.28)}
+.led-row.dup{opacity:.42}
+.empty-note{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-dim);padding:10px 0}
+
+.mono-block{font-family:'IBM Plex Mono',monospace;font-size:11px;line-height:1.75;word-break:break-all;color:var(--brass-lt);background:rgba(0,0,0,.4);border:1px solid rgba(201,162,39,.22);border-radius:2px;padding:11px 13px}
+.mono-block.sealed{color:#5d6879;border-color:var(--line)}
+.field-label{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-dim);margin:14px 0 6px}
+.field-label:first-child{margin-top:0}
+.note{font-size:12px;line-height:1.65;color:var(--ink-dim);margin-top:14px}
+.mini{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;background:none;border:1px solid var(--line);color:var(--ink-dim);padding:6px 11px;border-radius:2px;cursor:pointer}
+.mini:hover{color:var(--ink);border-color:var(--steel)}
+.verdict{margin-top:14px;padding:11px 13px;border-radius:2px;font-family:'IBM Plex Mono',monospace;font-size:11px;line-height:1.7}
+.verdict.ok{background:rgba(58,140,90,.14);border:1px solid rgba(88,190,125,.4);color:#7fe0a8}
+.verdict.bad{background:rgba(160,50,50,.14);border:1px solid rgba(220,90,90,.4);color:#ff9a9a}
+
+.odds-wrap{overflow:auto;margin-top:10px;border:1px solid rgba(125,138,156,.14);border-radius:3px}
+.odds-table{border-collapse:collapse;width:100%;min-width:720px;font-family:'IBM Plex Mono',monospace;font-size:10px}
+.odds-table th,.odds-table td{padding:7px 8px;text-align:right;border-bottom:1px solid rgba(125,138,156,.09);white-space:nowrap}
+.odds-table th:first-child,.odds-table td:first-child{text-align:left;position:sticky;left:0;background:#111a2b;z-index:1}
+.odds-table thead th{color:var(--ink-dim);font-weight:600;background:rgba(8,13,23,.96)}
+.odds-table tbody tr:last-child td{border-bottom:0}
+.odds-table .p1{color:var(--brass-lt)}
+.odds-summary{margin-top:11px;font-family:'IBM Plex Mono',monospace;font-size:10px;line-height:1.7;color:var(--ink-dim)}
+.odds-summary b{color:#7fe0a8;font-weight:600}
+.machine-note{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-dim);margin-top:10px;text-align:center}
+
+.explain{margin-top:32px;border-top:1px solid var(--line);padding-top:26px;display:grid;grid-template-columns:repeat(3,1fr);gap:30px}
+.explain h3{font-family:'Bebas Neue',Impact,sans-serif;font-size:19px;letter-spacing:.07em;margin-bottom:9px}
+.explain h3 span{color:var(--brass);font-family:'IBM Plex Mono',monospace;font-size:11px;margin-right:8px}
+.explain p{font-size:13px;line-height:1.7;color:var(--ink-dim)}
+
+::-webkit-scrollbar{width:7px}
+::-webkit-scrollbar-thumb{background:#39434f;border-radius:4px}
+::-webkit-scrollbar-track{background:transparent}
+
+@media(max-width:960px){
+  .stage{grid-template-columns:1fr;gap:28px}
+  .machine{order:-1}
+  .explain{grid-template-columns:1fr;gap:22px}
+  .masthead{flex-direction:column;align-items:flex-start;gap:14px}
+}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+/* seed contributions */
+.wordgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px 14px}
+.wordrow{display:grid;grid-template-columns:16px 1fr;align-items:center;gap:9px}
+.wordrow .dot{width:12px;height:12px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(255,255,255,.28)}
+.wordrow input{
+  width:100%;background:rgba(0,0,0,.35);border:1px solid var(--line);border-radius:2px;
+  color:var(--ink);font-family:'IBM Plex Mono',monospace;font-size:12px;padding:7px 9px;
+}
+.wordrow input:focus{outline:none;border-color:var(--brass);background:rgba(0,0,0,.5)}
+.wordrow input::placeholder{color:#4d5766}
+.lockrow{display:flex;gap:10px;margin-top:14px}
+.lockrow button{flex:1;font-size:16px;padding:12px}
+.btn-lock{background:var(--brass);color:#141007}
+.btn-lock:hover:not(:disabled){background:var(--brass-lt)}
+.btn-lock:disabled{background:#2b3241;color:#5d6879;cursor:not-allowed}
+
+/* mode switch */
+.modes{display:flex;gap:8px;width:100%;max-width:560px;margin:0 auto 14px}
+.modes button{
+  flex:1;background:transparent;border:1px solid var(--line);color:var(--ink-dim);
+  font-size:15px;padding:11px;letter-spacing:.09em;
+}
+.modes button.on{background:rgba(201,162,39,.14);border-color:var(--brass);color:var(--brass-lt)}
+
+/* division result lists */
+.divwrap{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.divcol h4{font-family:'Bebas Neue',Impact,sans-serif;font-size:20px;letter-spacing:.07em;margin-bottom:10px}
+.divcol.miller h4{color:#3d7fe0}
+.divcol.bud h4{color:#e0453c}
+.divrow{display:grid;grid-template-columns:22px 16px 1fr;align-items:center;gap:9px;padding:8px 0;
+  border-bottom:1px solid rgba(125,138,156,.1);font-size:13px}
+.divrow .n{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--ink-dim)}
+.divrow .dot{width:15px;height:15px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(255,255,255,.28)}
+.divrow.open{opacity:.28}
+.divrow.open .dot{background:transparent;border:1px dashed var(--steel)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div id="crash"></div>
+
+  <header class="masthead">
+    <div class="brand">
+      <h1>Draft <em>Lottery</em></h1>
+      <p>Fifty-five balls &middot; Ten managers &middot; First ball out takes the slot</p>
+    </div>
+    <div class="seal">Balls drawn<b id="sealCount">0 / 55</b></div>
+  </header>
+
+  <div class="stage">
+    <section class="machine">
+      <div class="modes">
+          <button id="modeLottery" class="on">Draft lottery</button>
+          <button id="modeDivision">Division draw</button>
+        </div>
+        <canvas id="cv" aria-label="Lottery ball machine"></canvas>
+      <div class="controls">
+        <button class="btn-draw" id="btnDraw">Draw ball</button>
+        <button class="btn-ghost" id="btnReset">New lottery</button>
+      </div>
+      <div class="machine-note">Animated air-mix simulation · draw order remains committed before animation</div>
+    </section>
+
+    <section>
+      <div class="panel" id="wordPanel">
+        <div class="eyebrow"><span>Step 2 &middot; League words</span><span id="wordStatus">0 of 10</span></div>
+        <p class="note" style="margin:0 0 14px">Post the commitment above to the group chat <em>first</em>. Then each manager sends a random word and you type them in here. The words plus the sealed seed decide the order, so nobody can steer it alone.</p>
+        <div class="wordgrid" id="wordGrid"></div>
+        <div class="lockrow">
+          <button class="btn-lock" id="btnLock" disabled>Lock in and shuffle</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="eyebrow"><span>On the rail</span><span id="railPick"></span></div>
+        <div class="called" id="called"><div class="idle">Machine loading</div></div>
+      </div>
+
+      <div class="panel" id="divPanel" style="display:none">
+        <div class="eyebrow"><span>Divisions</span><span id="divStatus">0 of 10 placed</span></div>
+        <div class="divwrap">
+          <div class="divcol miller"><h4>Miller</h4><div id="millerList"></div></div>
+          <div class="divcol bud"><h4>Budweiser</h4><div id="budList"></div></div>
+        </div>
+      </div>
+
+      <div class="panel" id="boardPanel">
+        <div class="eyebrow"><span>Draft order</span><span id="boardCount">0 of 10 seated</span></div>
+        <div class="board" id="board"></div>
+      </div>
+
+      <div class="panel" id="poolPanel">
+        <div class="eyebrow"><span>Balls in the drum</span><span id="poolTotal">55 balls</span></div>
+        <div class="pool" id="pool"></div>
+      </div>
+
+      <div class="panel" id="oddsPanel">
+        <div class="eyebrow"><span>Statistical odds validation</span><span id="oddsStatus">Exact model</span></div>
+        <p class="note" style="margin-top:0">Each cell is the exact probability that a manager finishes in that draft slot. These are calculated from the weighted first-appearance process, not estimated from the animation.</p>
+        <div class="odds-wrap" id="oddsMatrix"></div>
+        <div class="odds-summary" id="oddsSummary"></div>
+      </div>
+
+      <div class="panel">
+        <div class="eyebrow"><span>Draw ledger</span><button class="mini" id="btnExport">Export</button></div>
+        <div class="ledger" id="ledger"><div class="empty-note">No draws yet</div></div>
+      </div>
+
+      <div class="panel">
+        <div class="eyebrow"><span>Verification</span><button class="mini" id="btnVerify">Run check</button></div>
+        <div class="field-label">Commitment &mdash; published before draw one</div>
+        <div class="mono-block" id="commitBox">&mdash;</div>
+        <div class="field-label">Seed &mdash; revealed when the lottery ends</div>
+        <div class="mono-block sealed" id="seedBox">Sealed</div>
+        <div id="verdict"></div>
+        <p class="note">The full order was fixed and hashed before the first ball moved. Nothing the tumbling does can change it. When the seed is revealed, anyone can regenerate the same 55-ball order and confirm it matches this hash.</p>
+      </div>
+    </section>
+  </div>
+
+  <div class="explain">
+    <div><h3><span>01</span>Sealed first</h3><p>On load the machine draws a random 128-bit seed, shuffles all 55 balls with it, and publishes a SHA-256 commitment. Screenshot that hash and send it to the group before you draw.</p></div>
+    <div><h3><span>02</span>First ball takes the slot</h3><p>A manager is seated the first time one of their balls comes out. Later balls for a seated manager are dead and just roll past. Ten seats, then it stops.</p></div>
+    <div><h3><span>03</span>Checked after</h3><p>The seed unseals at the end. Rerun the shuffle from it and you get the identical sequence, and its hash matches what you published in step one.</p></div>
+  </div>
+</div>
+
+<script>
+
+'use strict';
+function report(msg){
+  const el=document.getElementById('crash');
+  el.style.display='block'; el.textContent='Error: '+msg;
+}
+window.addEventListener('error',e=>report((e.message||'unknown')+' @'+(e.lineno||'?')));
+window.addEventListener('unhandledrejection',e=>report('promise: '+(e.reason&&e.reason.message||e.reason)));
+
+/* ---------- self-contained SHA-256 ---------- */
+const K256=[
+0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
+0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
+0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
+0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
+0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,
+0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
+0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
+0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];
+
+function sha256(str){
+  const rotr=(n,x)=>(x>>>n)|(x<<(32-n));
+  let H=[0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];
+  const bytes=new TextEncoder().encode(str), l=bytes.length;
+  const buf=new Uint8Array((((l+8)>>6)+1)<<6);
+  buf.set(bytes); buf[l]=0x80;
+  const dv=new DataView(buf.buffer), bits=l*8;
+  dv.setUint32(buf.length-8,Math.floor(bits/4294967296));
+  dv.setUint32(buf.length-4,bits>>>0);
+  const w=new Uint32Array(64);
+  for(let i=0;i<buf.length;i+=64){
+    for(let t=0;t<16;t++) w[t]=dv.getUint32(i+t*4);
+    for(let t=16;t<64;t++){
+      const a1=w[t-15],b1=w[t-2];
+      const s0=rotr(7,a1)^rotr(18,a1)^(a1>>>3);
+      const s1=rotr(17,b1)^rotr(19,b1)^(b1>>>10);
+      w[t]=(w[t-16]+s0+w[t-7]+s1)>>>0;
+    }
+    let a=H[0],b=H[1],c=H[2],d=H[3],e=H[4],f=H[5],g=H[6],h=H[7];
+    for(let t=0;t<64;t++){
+      const S1=rotr(6,e)^rotr(11,e)^rotr(25,e);
+      const ch=(e&f)^(~e&g);
+      const t1=(h+S1+ch+K256[t]+w[t])>>>0;
+      const S0=rotr(2,a)^rotr(13,a)^rotr(22,a);
+      const mj=(a&b)^(a&c)^(b&c);
+      const t2=(S0+mj)>>>0;
+      h=g;g=f;f=e;e=(d+t1)>>>0;d=c;c=b;b=a;a=(t1+t2)>>>0;
+    }
+    H=[(H[0]+a)>>>0,(H[1]+b)>>>0,(H[2]+c)>>>0,(H[3]+d)>>>0,
+       (H[4]+e)>>>0,(H[5]+f)>>>0,(H[6]+g)>>>0,(H[7]+h)>>>0];
+  }
+  return H.map(x=>x.toString(16).padStart(8,'0')).join('');
+}
+
+
+/* ---------- managers ---------- */
+const TEAMS=[
+  {name:'Ricky',   tag:'RIK', hex:'#4e79a7', count:10},
+  {name:'Mouse',   tag:'MSE', hex:'#59a14f', count:9},
+  {name:'Papa H',  tag:'PAP', hex:'#e15759', count:8},
+  {name:'Fish',    tag:'FSH', hex:'#edc948', count:7},
+  {name:'AK',      tag:'AK',  hex:'#8c613c', count:6},
+  {name:'Chx',     tag:'CHX', hex:'#76b7b2', count:5},
+  {name:'Skipper', tag:'SKP', hex:'#4b3f72', count:4},
+  {name:'Commish', tag:'CMH', hex:'#f28e2b', count:3},
+  {name:'Brez',    tag:'BRZ', hex:'#c0399f', count:2},
+  {name:'Une',     tag:'UNE', hex:'#000000', count:1}
+];
+const TOTAL=TEAMS.reduce((s,t)=>s+t.count,0);
+const pct=c=>(c/TOTAL*100).toFixed(1)+'%';
+
+function lum(hex){
+  const n=parseInt(hex.slice(1),16);
+  return (((n>>16)&255)*.299+((n>>8)&255)*.587+(n&255)*.114)/255;
+}
+function relLum(hex){
+  const n=parseInt(hex.slice(1),16);
+  const f=v=>{v/=255;return v<=.03928?v/12.92:Math.pow((v+.055)/1.055,2.4);};
+  return .2126*f((n>>16)&255)+.7152*f((n>>8)&255)+.0722*f(n&255);
+}
+function contrast(a,b){
+  const l1=relLum(a), l2=relLum(b);
+  return (Math.max(l1,l2)+.05)/(Math.min(l1,l2)+.05);
+}
+/* Pick whichever label colour actually reads better on this ball rather than
+   guessing from brightness - the mid-tone greens and purples fail otherwise. */
+function inkFor(hex){ return contrast(hex,'#ffffff')>=contrast(hex,'#14181f')?'#ffffff':'#14181f'; }
+function rimFor(hex){ return lum(hex)<.18?'rgba(255,255,255,.40)':shade(hex,-.42); }
+function shade(hex,amt){
+  const n=parseInt(hex.slice(1),16);
+  let r=(n>>16)&255,g=(n>>8)&255,b=n&255;
+  if(amt>0){r+=(255-r)*amt;g+=(255-g)*amt;b+=(255-b)*amt;}
+  else{r*=(1+amt);g*=(1+amt);b*=(1+amt);}
+  const f=v=>Math.max(0,Math.min(255,Math.round(v)));
+  return 'rgb('+f(r)+','+f(g)+','+f(b)+')';
+}
+
+/* every ball carries its own shading so drum and rail render identically */
+function manifest(){
+  const out=[];
+  TEAMS.forEach(t=>{
+    for(let i=1;i<=t.count;i++) out.push({
+      id:t.tag+i, team:t.name, tag:t.tag, hex:t.hex, num:t.count,
+      lt:shade(t.hex,.42), dk:shade(t.hex,-.42), ink:inkFor(t.hex), rim:rimFor(t.hex)
+    });
+  });
+  return out;
+}
+const MANIFEST_STR=manifest().map(b=>b.id).join(',');
+
+/* ---------- commit & reveal ---------- */
+function sfc32(a,b,c,d){
+  return function(){
+    a|=0;b|=0;c|=0;d|=0;
+    const t=(a+b|0)+d|0; d=d+1|0; a=b^b>>>9; b=c+(c<<3)|0;
+    c=(c<<21|c>>>11); c=c+t|0;
+    return (t>>>0)/4294967296;
+  };
+}
+function prngFromSeed(hex){
+  const n=[];
+  for(let i=0;i<4;i++) n.push(parseInt(hex.slice(i*8,i*8+8),16)>>>0);
+  const r=sfc32(n[0],n[1],n[2],n[3]);
+  for(let i=0;i<16;i++) r();
+  return r;
+}
+function shuffleWithSeed(hex){
+  const deck=manifest(), rnd=prngFromSeed(hex);
+  for(let i=deck.length-1;i>0;i--){
+    const j=Math.floor(rnd()*(i+1));
+    const t=deck[i]; deck[i]=deck[j]; deck[j]=t;
+  }
+  return deck;
+}
+function newSeed(){
+  const b=new Uint8Array(16);
+  if(window.crypto&&crypto.getRandomValues) crypto.getRandomValues(b);
+  else for(let i=0;i<16;i++) b[i]=Math.floor(Math.random()*256);
+  return Array.from(b).map(x=>x.toString(16).padStart(2,'0')).join('');
+}
+
+
+/* ---------- canvas: size first, then derive geometry ---------- */
+const cv=document.getElementById('cv'), ctx=cv.getContext('2d');
+const W=560,H=822;
+/* Size the backing store BEFORE any geometry is derived from it. Skipping this
+   leaves the canvas at its default 300x150 while CSS stretches it, which draws
+   everything zoomed and collapses the element's height. */
+const DPR=Math.min(window.devicePixelRatio||1,2);
+cv.width=W*DPR; cv.height=H*DPR;
+ctx.scale(DPR,DPR);
+
+const CX=W/2, DRUM_Y=536, DRUM_R=216, R=13;
+const DRUM_TOP=DRUM_Y-DRUM_R;
+const DOOR_Y=DRUM_TOP-34;            // trap door sits ABOVE the glass, not on the rim
+const TUBE_W=44;
+const JUNC_Y=116;                    // where the tube splits
+const RAIL_Y=54;                     // draft order, ten slots only
+const RAIL_X0=44, RAIL_GAP=47, RAIL_CAP=10, RAIL_R=13;
+const railX=i=>RAIL_X0+i*RAIL_GAP;
+const DEAD_X=W-86, DEAD_Y=236;
+const REVEAL_Y=250;                  // result banner sits above the globe       // reject bin for balls whose manager is seated
+const TUBE_TOP=JUNC_Y;
+
+/* Stirrer. The hub sits low so the arms sweep through the pile at the bottom
+   of the globe and fling balls up through the open middle. Its speed wanders
+   and reverses at random intervals - a constant-speed stirrer would spin the
+   whole mass one way and we would be back to a circulating pattern. */
+const HUB_Y=DRUM_Y+DRUM_R*.34;
+const ARM_N=3, ARM_LEN=DRUM_R*.70, ARM_HALF=8;
+const TAU=Math.PI*2;
+
+
+/* ---------- state ---------- */
+let mode='lottery';
+let seedHex='', commitHash='', finalSeed='', words=[];
+let armed=false;                       // true once the words are locked in
+let order=[], drawn=[], seated=[];
+let divOrder=[], divPicks=[];          // division draw
+let balls=[], drawing=false, revealed=false;
+let gust=0, loadIdx=0, tick=0, scramble=0, scrambleT=120;
+let rotAng=0, rotVel=.06, rotTarget=.06, rotT=60, stirScale=1;
+let doorOpen=0, targetDrawId=null;
+let reveal=null, revealT=0;
+
+const LOTTERY_TOTAL=TOTAL;
+
+/* Build the pool of balls for the current mode. The draft lottery uses all 55
+   weighted balls; the division draw uses exactly one ball per manager so every
+   manager has the same chance of landing in either division. */
+function poolForMode(){
+  if(mode==='division') return TEAMS.map(t=>({
+    id:t.tag, team:t.name, tag:t.tag, hex:t.hex, num:null,
+    lt:shade(t.hex,.42), dk:shade(t.hex,-.42), ink:inkFor(t.hex), rim:rimFor(t.hex)
+  }));
+  return manifest();
+}
+const DIV_MANIFEST=TEAMS.map(t=>t.tag).join(',');
+
+function spawnBalls(list){
+  balls=list.map((b,i)=>Object.assign({},b,{
+    x:CX+(Math.random()-.5)*12, y:-40-i*7,
+    vx:0,vy:0,rot:Math.random()*6.28,spin:0,state:'queued'
+  }));
+  loadIdx=0; tick=0;
+}
+
+/* ---------- new session ---------- */
+function newDraft(){
+  seedHex=newSeed();
+  // NOTE: nothing is shuffled here. The commitment locks this seed, but the
+  // order does not exist until the league words arrive and arm() runs.
+  commitHash=sha256(seedHex+'|'+MANIFEST_STR);
+  finalSeed=''; words=[]; armed=false;
+  order=[]; drawn=[]; seated=[]; divOrder=[]; divPicks=[];
+  revealed=false; drawing=false; doorOpen=0; targetDrawId=null; reveal=null;
+  gust=0; scramble=0; scrambleT=120;
+  rotAng=0; rotVel=.06; rotTarget=.06; rotT=60; stirScale=1;
+
+  spawnBalls(poolForMode());
+
+  document.getElementById('commitBox').textContent=commitHash;
+  const sb=document.getElementById('seedBox');
+  sb.textContent='Sealed'; sb.className='mono-block sealed';
+  document.getElementById('verdict').innerHTML='';
+  document.getElementById('ledger').innerHTML='<div class="empty-note">No draws yet</div>';
+  document.getElementById('called').innerHTML='<div class="idle">Waiting on the league words</div>';
+  document.getElementById('railPick').textContent='';
+  buildWordGrid();
+  syncMode();
+  renderBoard(); renderPools(); renderDivisions(); renderOddsValidation();
+}
+
+/* ---------- step 2: the league words ---------- */
+function buildWordGrid(){
+  document.getElementById('wordGrid').innerHTML=TEAMS.map((t,i)=>
+    '<div class="wordrow"><span class="dot" style="background:'+t.hex+'"></span>'+
+    '<input id="w'+i+'" autocomplete="off" spellcheck="false" placeholder="'+t.name+'"></div>').join('');
+  TEAMS.forEach((t,i)=>document.getElementById('w'+i).addEventListener('input',checkWords));
+  checkWords();
+}
+function checkWords(){
+  let n=0;
+  TEAMS.forEach((t,i)=>{ if(document.getElementById('w'+i).value.trim()) n++; });
+  document.getElementById('wordStatus').textContent=n+' of '+TEAMS.length;
+  document.getElementById('btnLock').disabled=(n<TEAMS.length)||armed;
+}
+
+/* Combine the sealed seed with the ten words. Neither side can steer this:
+   the seed was published as a hash before the words existed, and the words
+   were chosen without knowing the seed. */
+function armMachine(){
+  words=TEAMS.map((t,i)=>document.getElementById('w'+i).value.trim());
+  if(words.some(w=>!w)) return;
+  finalSeed=sha256(seedHex+'|'+words.join('|')).slice(0,32);
+  order=shuffleWithSeed(finalSeed);
+  const divSeed=sha256(finalSeed+'|divisions').slice(0,32);
+  divOrder=shuffleTeams(divSeed);
+  armed=true;
+  TEAMS.forEach((t,i)=>document.getElementById('w'+i).disabled=true);
+  document.getElementById('btnLock').disabled=true;
+  document.getElementById('btnLock').textContent='Locked in';
+  document.getElementById('called').innerHTML='<div class="idle">Armed &mdash; press draw</div>';
+  syncMode();
+}
+
+function shuffleTeams(hex){
+  const deck=TEAMS.map(t=>t.name), rnd=prngFromSeed(hex);
+  for(let i=deck.length-1;i>0;i--){
+    const j=Math.floor(rnd()*(i+1));
+    const t=deck[i]; deck[i]=deck[j]; deck[j]=t;
+  }
+  return deck;
+}
+
+/* ---------- mode ---------- */
+function setMode(m){
+  if(drawing||m===mode) return;
+  mode=m;
+  drawn=[]; seated=[]; divPicks=[]; revealed=false; reveal=null;
+  spawnBalls(poolForMode());
+  document.getElementById('ledger').innerHTML='<div class="empty-note">No draws yet</div>';
+  document.getElementById('called').innerHTML='<div class="idle">'+(armed?'Armed &mdash; press draw':'Waiting on the league words')+'</div>';
+  document.getElementById('railPick').textContent='';
+  const sb=document.getElementById('seedBox');
+  sb.textContent=revealed?seedHex:'Sealed'; sb.className='mono-block sealed';
+  syncMode(); renderBoard(); renderPools(); renderDivisions(); renderLedger();
+}
+function syncMode(){
+  document.getElementById('modeLottery').className=mode==='lottery'?'on':'';
+  document.getElementById('modeDivision').className=mode==='division'?'on':'';
+  document.getElementById('divPanel').style.display=mode==='division'?'':'none';
+  document.getElementById('boardPanel').style.display=mode==='lottery'?'':'none';
+  document.getElementById('poolPanel').style.display=mode==='lottery'?'':'none';
+  document.getElementById('oddsPanel').style.display=mode==='lottery'?'':'none';
+  const total=mode==='division'?TEAMS.length:LOTTERY_TOTAL;
+  const done=mode==='division'?divPicks.length:drawn.length;
+  document.getElementById('sealCount').textContent=done+' / '+total;
+  const btn=document.getElementById('btnDraw');
+  const finished=mode==='division' ? divPicks.length>=TEAMS.length
+                                   : (seated.length>=TEAMS.length||drawn.length>=LOTTERY_TOTAL);
+  btn.disabled=!armed||finished||drawing;
+  btn.textContent=!armed?'Locked' : finished?'Complete' : 'Draw ball';
+}
+function roundRect(x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath();
+}
+function chrome(x0,y0,x1,y1){
+  const g=ctx.createLinearGradient(x0,y0,x1,y1);
+  g.addColorStop(0,'#aab6c4'); g.addColorStop(.34,'#59646f');
+  g.addColorStop(.62,'#8d99a7'); g.addColorStop(1,'#2d353f');
+  return g;
+}
+
+
+function step(){
+  if(loadIdx<balls.length){
+    tick++;
+    if(tick%2===0){ balls[loadIdx].state='falling'; loadIdx++; }
+  }
+
+  // stirrer speed wanders and flips direction at random so no steady spin forms
+  if(--rotT<=0){
+    rotT=45+Math.random()*130;
+    rotTarget=(Math.random()<.45?-1:1)*(.070+Math.random()*.130);
+  }
+  rotVel+=(rotTarget*stirScale-rotVel)*.055;
+  rotAng+=rotVel;
+
+  // occasional hard kick of the stirrer
+  if(--scrambleT<=0){
+    scrambleT=150+Math.random()*320;
+    scramble=1;
+    rotTarget=(Math.random()<.5?-1:1)*(.11+Math.random()*.07);
+    rotVel=rotTarget;
+  }
+  scramble*=.94;
+
+  const SUB=2, DT=1/SUB, NZ=Math.sqrt(DT);
+  const arms=[];
+  for(let k=0;k<ARM_N;k++){
+    const a=rotAng+k*TAU/ARM_N;
+    arms.push({dx:Math.cos(a),dy:Math.sin(a)});
+  }
+
+  for(let sub=0;sub<SUB;sub++){
+    for(const b of balls){
+      if(b.state==='queued'||b.state==='captured') continue;
+
+      if(b.state==='falling'){
+        b.vy+=.62*DT; b.y+=b.vy*DT;
+        b.x+=(CX-b.x)*.14*DT;
+        b.rot+=.05*DT;
+        if(b.y>DRUM_TOP+R*2.2){ b.state='live'; b.vx=(Math.random()-.5)*5; }
+        continue;
+      }
+
+      b.vy+=.40*DT;                                   // gravity
+
+      b.vx+=(Math.random()-.5)*.40*NZ;                // ambient chop
+      b.vy+=(Math.random()-.5)*.40*NZ;
+
+      b.vx*=(1-.004*DT); b.vy*=(1-.004*DT);
+      b.spin*=(1-.052*DT);
+
+      const sp=Math.hypot(b.vx,b.vy), cap=20+scramble*6;
+      if(sp>cap){ b.vx=b.vx/sp*cap; b.vy=b.vy/sp*cap; }
+
+      b.x+=b.vx*DT; b.y+=b.vy*DT; b.rot+=b.spin*DT;
+
+      // stirrer arms: a swept bar that throws whatever it catches
+      for(const arm of arms){
+        const rx=b.x-CX, ry=b.y-HUB_Y;
+        const along=rx*arm.dx+ry*arm.dy;
+        if(along<0||along>ARM_LEN) continue;
+        let perp=rx*(-arm.dy)+ry*arm.dx;
+        const reach=ARM_HALF+R;
+        if(perp>reach||perp<-reach) continue;
+        const sgn=perp>=0?1:-1;
+        const pen=reach-(perp<0?-perp:perp);
+        const nx=-arm.dy*sgn, ny=arm.dx*sgn;          // out of the bar face
+        b.x+=nx*pen; b.y+=ny*pen;
+        const surf=rotVel*along;                      // bar surface speed here
+        const pvx=-arm.dy*surf, pvy=arm.dx*surf;
+        const vrel=(b.vx-pvx)*nx+(b.vy-pvy)*ny;
+        if(vrel<0){
+          const j=-(1+.86)*vrel;
+          b.vx+=j*nx; b.vy+=j*ny;
+          b.spin+=((b.vx-pvx)*(-ny)+(b.vy-pvy)*nx)*.004;
+        }
+      }
+
+      // curved glass wall
+      const d=Math.hypot(b.x-CX,b.y-DRUM_Y), lim=DRUM_R-R-4;
+      if(d>lim){
+        const a=Math.atan2(b.y-DRUM_Y,b.x-CX);
+        b.x=CX+Math.cos(a)*lim; b.y=DRUM_Y+Math.sin(a)*lim;
+        const nx=Math.cos(a), ny=Math.sin(a);
+        const vn=b.vx*nx+b.vy*ny;
+        if(vn>0){ b.vx-=(1+.86)*vn*nx; b.vy-=(1+.86)*vn*ny; }
+        const tx=-ny, ty=nx, vt=b.vx*tx+b.vy*ty;
+        b.vx-=vt*.04*tx; b.vy-=vt*.04*ty;
+        b.spin+=vt*.006;
+      }
+    }
+
+    const live=balls.filter(b=>b.state==='live');
+    for(let pass=0;pass<4;pass++){
+      for(let i=0;i<live.length;i++){
+        for(let j=i+1;j<live.length;j++){
+          const a=live[i],b=live[j];
+          const dx=b.x-a.x, dy=b.y-a.y;
+          const d=Math.hypot(dx,dy);
+          if(d===0||d>=R*2) continue;
+          const nx=dx/d, ny=dy/d, ov=(R*2-d)/2;
+          a.x-=nx*ov; a.y-=ny*ov; b.x+=nx*ov; b.y+=ny*ov;
+          const rvn=(b.vx-a.vx)*nx+(b.vy-a.vy)*ny;
+          if(rvn<0){
+            const jn=-(1+.93)*rvn/2;
+            a.vx-=jn*nx; a.vy-=jn*ny; b.vx+=jn*nx; b.vy+=jn*ny;
+            const tx=-ny, ty=nx;
+            const rvt=(b.vx-a.vx)*tx+(b.vy-a.vy)*ty;
+            const jt=rvt*.05;
+            a.vx+=jt*tx; a.vy+=jt*ty; b.vx-=jt*tx; b.vy-=jt*ty;
+            a.spin+=rvt*.0025; b.spin-=rvt*.0025;
+          }
+        }
+      }
+    }
+
+    // containment: contact resolution runs after the wall check and can shove a
+    // ball through the glass, so re-seat anything that ended up outside
+    for(const b of live){
+      const d=Math.hypot(b.x-CX,b.y-DRUM_Y), lim=DRUM_R-R-4;
+      if(d>lim){
+        const a=Math.atan2(b.y-DRUM_Y,b.x-CX);
+        b.x=CX+Math.cos(a)*lim; b.y=DRUM_Y+Math.sin(a)*lim;
+      }
+    }
+  }
+
+  gust+=(.3-gust)*.045;
+}
+
+
+/* ---------- render ---------- */
+function drawBall(b,rad,x,y){
+  const bx=x===undefined?b.x:x, by=y===undefined?b.y:y;
+
+  // solid colour body
+  ctx.save();
+  ctx.shadowColor='rgba(0,0,0,.5)'; ctx.shadowBlur=8; ctx.shadowOffsetY=3;
+  ctx.fillStyle=b.hex;
+  ctx.beginPath(); ctx.arc(bx,by,rad,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+
+  /* A faint band that turns with the ball. Without it a plain disc gives the
+     eye nothing to track and the tumbling reads as sliding. */
+  ctx.save();
+  ctx.beginPath(); ctx.arc(bx,by,rad,0,Math.PI*2); ctx.clip();
+  ctx.translate(bx,by); ctx.rotate(b.rot||0);
+  ctx.fillStyle='rgba(0,0,0,.16)';
+  ctx.fillRect(-rad,rad*.18,rad*2,rad*.5);
+  ctx.fillStyle='rgba(255,255,255,.10)';
+  ctx.fillRect(-rad,-rad*.72,rad*2,rad*.34);
+  ctx.restore();
+
+  // rim: dark balls need a light edge or they vanish against the globe
+  ctx.strokeStyle=b.rim||'rgba(0,0,0,.4)'; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.arc(bx,by,rad-.7,0,Math.PI*2); ctx.stroke();
+
+  // ball count, printed like a real lottery ball and turning with it
+  if(b.num!=null){
+    const txt=String(b.num);
+    ctx.save();
+    ctx.translate(bx,by); ctx.rotate(b.rot||0);
+    ctx.font='600 '+(Math.min(rad*.95, rad*2.1/Math.max(2,txt.length))).toFixed(1)+'px "IBM Plex Mono",monospace';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillStyle=b.ink||'#fff';
+    ctx.fillText(txt,0,0);
+    ctx.restore();
+  }
+
+  // fixed specular, so the light source stays put while the ball turns
+  ctx.fillStyle='rgba(255,255,255,.34)';
+  ctx.beginPath();
+  ctx.ellipse(bx-rad*.34,by-rad*.44,rad*.26,rad*.15,-.6,0,Math.PI*2);
+  ctx.fill();
+}
+function exactSlotOdds(){
+  const n=TEAMS.length;
+  const slot=Array.from({length:n},()=>Array(n).fill(0));
+  let dp=new Map([[0,1]]);
+  for(let pos=0;pos<n;pos++){
+    const nd=new Map();
+    for(const [mask,p] of dp){
+      let denom=0;
+      for(let j=0;j<n;j++) if(!(mask&(1<<j))) denom+=TEAMS[j].count;
+      for(let j=0;j<n;j++){
+        if(mask&(1<<j)) continue;
+        const q=p*TEAMS[j].count/denom;
+        slot[j][pos]+=q;
+        const nm=mask|(1<<j);
+        nd.set(nm,(nd.get(nm)||0)+q);
+      }
+    }
+    dp=nd;
+  }
+  return slot;
+}
+
+function renderOddsValidation(){
+  const m=exactSlotOdds();
+  const fmt=x=>(x*100).toFixed(2)+'%';
+  let h='<table class="odds-table"><thead><tr><th>Manager</th>';
+  for(let k=0;k<TEAMS.length;k++) h+='<th>Pick '+(k+1)+'</th>';
+  h+='</tr></thead><tbody>';
+  for(let i=0;i<TEAMS.length;i++){
+    h+='<tr><td>'+TEAMS[i].name+' · '+TEAMS[i].count+' balls</td>';
+    for(let k=0;k<TEAMS.length;k++) h+='<td class="'+(k===0?'p1':'')+'">'+fmt(m[i][k])+'</td>';
+    h+='</tr>';
+  }
+  h+='</tbody></table>';
+  document.getElementById('oddsMatrix').innerHTML=h;
+
+  let maxErr=0;
+  for(let i=0;i<TEAMS.length;i++){
+    maxErr=Math.max(maxErr,Math.abs(m[i][0]-TEAMS[i].count/TOTAL));
+    maxErr=Math.max(maxErr,Math.abs(m[i].reduce((a,b)=>a+b,0)-1));
+  }
+  for(let k=0;k<TEAMS.length;k++){
+    let s=0; for(let i=0;i<TEAMS.length;i++) s+=m[i][k];
+    maxErr=Math.max(maxErr,Math.abs(s-1));
+  }
+  const ok=maxErr<1e-12;
+  document.getElementById('oddsStatus').textContent=ok?'PASS':'CHECK';
+  document.getElementById('oddsSummary').innerHTML=
+    (ok?'<b>PASS</b>':'FAIL')+
+    ' — Pick-1 probabilities equal ball share exactly; every manager row sums to 100%; every draft-slot column sums to 100%. Max numerical error: '+
+    maxErr.toExponential(2)+'.';
+}
+
+/* ---------- verify & export ---------- */
+
+
+function render(){
+  ctx.clearRect(0,0,W,H);
+  const bg=ctx.createRadialGradient(CX,DRUM_Y-40,20,CX,DRUM_Y,DRUM_R*2.1);
+  bg.addColorStop(0,'#16203a'); bg.addColorStop(1,'#080d17');
+  ctx.fillStyle=bg; ctx.fillRect(0,0,W,H);
+
+  // drive shaft + pedestal
+  ctx.fillStyle=chrome(CX-14,DRUM_Y,CX+14,H);
+  ctx.fillRect(CX-11,HUB_Y,22,DRUM_Y+DRUM_R-HUB_Y+30);
+  ctx.fillStyle=chrome(CX-120,DRUM_Y+DRUM_R-16,CX+120,H-30);
+  roundRect(CX-104,DRUM_Y+DRUM_R-22,208,62,8); ctx.fill();
+  ctx.fillStyle='rgba(0,0,0,.34)';
+  roundRect(CX-132,DRUM_Y+DRUM_R+32,264,18,6); ctx.fill();
+
+  const MILLER_BLUE='#3d7fe0', BUD_RED='#e0453c';
+  const rightName = mode==='division' ? 'BUDWEISER' : 'DEAD BALLS';
+
+  // ---- top rail ----
+  if(mode==='division'){
+    /* Two tinted sections instead of one bar, so a slot's division is obvious
+       at a glance. Miller loads left to right, Budweiser right to left, and the
+       break sits between slot 5 and slot 6. */
+    const LX=24, LW=228, RX=260, RW=242;
+    const seg=(x,w,hex)=>{
+      ctx.fillStyle=chrome(x,RAIL_Y-16,x+w,RAIL_Y+18);
+      roundRect(x,RAIL_Y-19,w,38,19); ctx.fill();
+      ctx.fillStyle='rgba(0,0,0,.52)';
+      roundRect(x+6,RAIL_Y-13,w-12,26,13); ctx.fill();
+      ctx.fillStyle=hex+'33';                       // colour wash in the channel
+      roundRect(x+6,RAIL_Y-13,w-12,26,13); ctx.fill();
+      ctx.strokeStyle=hex; ctx.lineWidth=2;
+      roundRect(x,RAIL_Y-19,w,38,19); ctx.stroke();
+    };
+    seg(LX,LW,MILLER_BLUE);
+    seg(RX,RW,BUD_RED);
+    ctx.font='600 11px "IBM Plex Mono",monospace';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillStyle=MILLER_BLUE; ctx.fillText('MILLER',LX+LW/2,RAIL_Y-31);
+    ctx.fillStyle=BUD_RED;     ctx.fillText('BUDWEISER',RX+RW/2,RAIL_Y-31);
+    ctx.textAlign='left';
+    const mill=divPicks.filter(p=>p.div==='Miller').map(p=>p.ball);
+    for(let i=0;i<mill.length;i++) drawBall(mill[i],RAIL_R,railX(i),RAIL_Y);
+  } else {
+    ctx.fillStyle=chrome(26,RAIL_Y-16,500,RAIL_Y+18);
+    roundRect(24,RAIL_Y-19,478,38,19); ctx.fill();
+    ctx.fillStyle='rgba(0,0,0,.48)';
+    roundRect(30,RAIL_Y-13,466,26,13); ctx.fill();
+    ctx.fillStyle='rgba(134,149,168,.8)';
+    ctx.font='600 9px "IBM Plex Mono",monospace';
+    ctx.textAlign='left'; ctx.textBaseline='middle';
+    ctx.fillText('DRAFT ORDER',26,RAIL_Y-30);
+    const seatedBalls=drawn.filter(d=>d.seatedHere);
+    for(let i=0;i<seatedBalls.length;i++) drawBall(seatedBalls[i],RAIL_R,railX(i),RAIL_Y);
+  }
+
+  // ---- tube ----
+  const tg=ctx.createLinearGradient(CX-TUBE_W/2,0,CX+TUBE_W/2,0);
+  tg.addColorStop(0,'rgba(150,168,190,.30)');
+  tg.addColorStop(.4,'rgba(200,220,245,.09)');
+  tg.addColorStop(1,'rgba(150,168,190,.30)');
+  ctx.fillStyle=tg;
+  ctx.fillRect(CX-TUBE_W/2,JUNC_Y,TUBE_W,DOOR_Y+18-JUNC_Y);
+  ctx.strokeStyle='rgba(125,138,156,.42)'; ctx.lineWidth=2;
+  ctx.beginPath();
+  ctx.moveTo(CX-TUBE_W/2,JUNC_Y); ctx.lineTo(CX-TUBE_W/2,DOOR_Y+18);
+  ctx.moveTo(CX+TUBE_W/2,JUNC_Y); ctx.lineTo(CX+TUBE_W/2,DOOR_Y+18);
+  ctx.stroke();
+
+  // splitter
+  ctx.lineWidth=mode==='division'?2.5:2;
+  ctx.strokeStyle=mode==='division'?MILLER_BLUE:'rgba(125,138,156,.34)';
+  ctx.beginPath();
+  ctx.moveTo(CX-14,JUNC_Y-6); ctx.quadraticCurveTo(CX-140,JUNC_Y-40,railX(0)+6,RAIL_Y+24);
+  ctx.stroke();
+  ctx.strokeStyle=mode==='division'?BUD_RED:'rgba(125,138,156,.34)';
+  ctx.beginPath();
+  ctx.moveTo(CX+16,JUNC_Y-6);
+  if(mode==='division') ctx.quadraticCurveTo(CX+140,JUNC_Y-40,railX(RAIL_CAP-1)+6,RAIL_Y+24);
+  else ctx.quadraticCurveTo(CX+96,JUNC_Y+22,DEAD_X-30,DEAD_Y-36);
+  ctx.stroke();
+  ctx.fillStyle=chrome(CX-42,JUNC_Y-14,CX+42,JUNC_Y+14);
+  roundRect(CX-40,JUNC_Y-13,80,26,7); ctx.fill();
+  ctx.fillStyle='rgba(6,10,17,.85)';
+  roundRect(CX-33,JUNC_Y-7,66,14,6); ctx.fill();
+
+  // ---- right track ----
+  if(mode==='division'){
+    // Budweiser fills the same rail from the opposite end
+    const budBalls=divPicks.filter(p=>p.div==='Budweiser').map(p=>p.ball);
+    for(let i=0;i<budBalls.length;i++) drawBall(budBalls[i],RAIL_R,railX(RAIL_CAP-1-i),RAIL_Y);
+  } else {
+    ctx.fillStyle='rgba(8,13,22,.8)';
+    roundRect(DEAD_X-74,DEAD_Y-32,148,80,10); ctx.fill();
+    ctx.strokeStyle='rgba(125,138,156,.30)'; ctx.lineWidth=1.5;
+    roundRect(DEAD_X-74,DEAD_Y-32,148,80,10); ctx.stroke();
+    ctx.fillStyle='rgba(134,149,168,.8)';
+    ctx.font='600 9px "IBM Plex Mono",monospace';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(rightName,DEAD_X,DEAD_Y-21);
+    const deadBalls=drawn.filter(d=>!d.seatedHere);
+    deadBalls.slice(-8).forEach((d,i)=>drawBall(d,9,DEAD_X-54+(i%4)*30,DEAD_Y+2+Math.floor(i/4)*24));
+    if(deadBalls.length>8){
+      ctx.fillStyle='rgba(134,149,168,.7)';
+      ctx.fillText('+'+(deadBalls.length-8),DEAD_X+60,DEAD_Y+14);
+    }
+  }
+
+  // ---- result banner, sitting above the globe where it cannot be missed ----
+  if(reveal){
+    const fade=Math.min(1,revealT/10);
+    ctx.globalAlpha=fade;
+    ctx.fillStyle='rgba(10,16,27,.92)';
+    roundRect(CX-190,REVEAL_Y-30,380,60,8); ctx.fill();
+    ctx.strokeStyle=reveal.hex; ctx.lineWidth=2;
+    roundRect(CX-190,REVEAL_Y-30,380,60,8); ctx.stroke();
+    drawBall(reveal.ball,20,CX-152,REVEAL_Y);
+    ctx.textAlign='left'; ctx.textBaseline='middle';
+    ctx.fillStyle='#eef2f7';
+    ctx.font='34px "Bebas Neue",Impact,sans-serif';
+    ctx.fillText(reveal.title,CX-118,REVEAL_Y-7);
+    ctx.fillStyle=reveal.hex;
+    ctx.font='600 11px "IBM Plex Mono",monospace';
+    ctx.fillText(reveal.sub,CX-118,REVEAL_Y+16);
+    ctx.globalAlpha=1;
+  }
+
+  // ---- globe ----
+  const glass=ctx.createRadialGradient(CX-58,DRUM_Y-72,10,CX,DRUM_Y,DRUM_R);
+  glass.addColorStop(0,'rgba(190,214,245,.10)');
+  glass.addColorStop(.66,'rgba(90,120,165,.05)');
+  glass.addColorStop(1,'rgba(12,18,30,.5)');
+  ctx.fillStyle=glass;
+  ctx.beginPath(); ctx.arc(CX,DRUM_Y,DRUM_R,0,Math.PI*2); ctx.fill();
+
+  ctx.save();
+  ctx.beginPath(); ctx.arc(CX,DRUM_Y,DRUM_R-4,0,Math.PI*2); ctx.clip();
+  for(let k=0;k<ARM_N;k++){
+    const a=rotAng+k*TAU/ARM_N;
+    ctx.save();
+    ctx.translate(CX,HUB_Y); ctx.rotate(a);
+    const g=ctx.createLinearGradient(0,-ARM_HALF,0,ARM_HALF);
+    g.addColorStop(0,'#9fadbc'); g.addColorStop(.5,'#5b6672'); g.addColorStop(1,'#2b333d');
+    ctx.fillStyle=g;
+    roundRect(0,-ARM_HALF,ARM_LEN,ARM_HALF*2,ARM_HALF); ctx.fill();
+    ctx.fillStyle='rgba(150,164,180,.9)';
+    roundRect(ARM_LEN-26,-ARM_HALF-5,26,ARM_HALF*2+10,5); ctx.fill();
+    ctx.restore();
+  }
+  const hg=ctx.createRadialGradient(CX-6,HUB_Y-6,2,CX,HUB_Y,20);
+  hg.addColorStop(0,'#b9c5d2'); hg.addColorStop(1,'#333b45');
+  ctx.fillStyle=hg;
+  ctx.beginPath(); ctx.arc(CX,HUB_Y,18,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='rgba(10,15,22,.9)';
+  ctx.beginPath(); ctx.arc(CX,HUB_Y,6,0,Math.PI*2); ctx.fill();
+  for(const b of balls){ if(b.state==='live'||b.state==='falling') drawBall(b,R); }
+  ctx.restore();
+
+  const cap=balls.find(b=>b.state==='captured');
+  if(cap) drawBall(cap,cap.rad||R);
+
+  ctx.strokeStyle=chrome(CX-DRUM_R,DRUM_Y-DRUM_R,CX+DRUM_R,DRUM_Y+DRUM_R);
+  ctx.lineWidth=9;
+  ctx.beginPath(); ctx.arc(CX,DRUM_Y,DRUM_R+2,0,Math.PI*2); ctx.stroke();
+  ctx.strokeStyle='rgba(255,255,255,.16)'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.arc(CX,DRUM_Y,DRUM_R-4,0,Math.PI*2); ctx.stroke();
+  ctx.lineCap='round';
+  ctx.strokeStyle='rgba(255,255,255,.20)'; ctx.lineWidth=13;
+  ctx.beginPath(); ctx.arc(CX,DRUM_Y,DRUM_R-26,Math.PI*1.16,Math.PI*1.46); ctx.stroke();
+  ctx.lineCap='butt';
+
+  // ---- trap door, above the glass so it reads against the tube ----
+  {
+    const dw=36, dh=18, travel=TUBE_W/2+14;
+    // shut at doorOpen 0 (plates meet over the mouth), retracted at 1
+    const gap=travel*doorOpen;
+    const lx=CX-dw-gap, rx=CX+gap;
+    ctx.fillStyle=chrome(CX-80,DOOR_Y,CX+80,DOOR_Y+dh);
+    roundRect(lx,DOOR_Y,dw,dh,3); ctx.fill();
+    roundRect(rx,DOOR_Y,dw,dh,3); ctx.fill();
+    ctx.strokeStyle='rgba(255,255,255,.30)'; ctx.lineWidth=1;
+    roundRect(lx,DOOR_Y,dw,dh,3); ctx.stroke();
+    roundRect(rx,DOOR_Y,dw,dh,3); ctx.stroke();
+    ctx.strokeStyle='rgba(10,15,22,.55)'; ctx.lineWidth=1.5;
+    for(let k=0;k<3;k++){
+      const ox=9+k*8;
+      ctx.beginPath();
+      ctx.moveTo(lx+dw-ox,DOOR_Y+4); ctx.lineTo(lx+dw-ox,DOOR_Y+dh-4);
+      ctx.moveTo(rx+ox,DOOR_Y+4);    ctx.lineTo(rx+ox,DOOR_Y+dh-4);
+      ctx.stroke();
+    }
+  }
+
+
+  if(revealT<10) revealT++;
+}
+
+let dead=false;
+function loop(){
+  if(!dead){
+    try{ step(); render(); }
+    catch(err){ dead=true; report(err.message); }
+  }
+  requestAnimationFrame(loop);
+}
+
+/* ---------- draw ---------- */
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+
+async function drawBallNow(){
+  if(drawing||!armed) return;
+  const isDiv = mode==='division';
+  if(isDiv ? divPicks.length>=TEAMS.length : (drawn.length>=LOTTERY_TOTAL||seated.length>=TEAMS.length)) return;
+
+  drawing=true;
+  document.getElementById('btnDraw').disabled=true;
+  document.getElementById('btnDraw').textContent='Drawing';
+
+  // The winner was fixed by the committed shuffle. Everything below is staging.
+  const next = isDiv
+    ? {id:divOrder[divPicks.length], team:divOrder[divPicks.length]}
+    : order[drawn.length];
+  const nextBall = isDiv
+    ? balls.find(b=>b.team===next.team) || poolForMode().find(b=>b.team===next.team)
+    : balls.find(b=>b.id===next.id);
+  targetDrawId = nextBall ? nextBall.id : null;
+
+  let guard=0;
+  while(nextBall&&nextBall.state&&nextBall.state!=='live'&&guard<200){ await wait(16); guard++; }
+
+  // destination decided before anything moves
+  let goLeft, destX, destY, destR;
+  if(isDiv){
+    goLeft = divPicks.length%2===0;                      // 1st left, 2nd right, alternating
+    const n = divPicks.filter(p=>p.div===(goLeft?'Miller':'Budweiser')).length;
+    destX = goLeft?railX(n):railX(RAIL_CAP-1-n);         // Budweiser fills from the far end
+    destY = RAIL_Y;
+    destR = RAIL_R;
+  } else {
+    goLeft = !seated.includes(next.team);
+    const n = goLeft?seated.length:drawn.filter(d=>!d.seatedHere).length;
+    destX = goLeft?railX(n):DEAD_X-54+(n%4)*30;
+    destY = goLeft?RAIL_Y:DEAD_Y+2+Math.floor((n%8)/4)*24;
+    destR = goLeft?RAIL_R:9;
+  }
+
+  for(let f=1;f<=6;f++){ doorOpen=f/6; await wait(16); }
+
+  const ball=nextBall;
+  if(ball&&ball.state){
+    ball.state='captured';
+    const sx=ball.x, sy=ball.y;
+    for(let f=1;f<=7;f++){
+      const t=f/7, e=t*(2-t);
+      ball.x=sx+(CX-sx)*e; ball.y=sy+(DRUM_TOP+6-sy)*e;
+      ball.rot+=.22; await wait(16);
+    }
+    const uy=ball.y;
+    for(let f=1;f<=8;f++){
+      const t=f/8;
+      ball.x=CX; ball.y=uy+(JUNC_Y-uy)*t;
+      ball.rot+=.18; await wait(16);
+    }
+    for(let f=1;f<=6;f++){ doorOpen=1-f/6; await wait(16); }
+    const fx=ball.x, fy=ball.y;
+    for(let f=1;f<=16;f++){
+      const t=f/16, e=t*t*(3-2*t);
+      ball.x=fx+(destX-fx)*e; ball.y=fy+(destY-fy)*e;
+      ball.rad=R+(destR-R)*e; ball.rot+=.12; await wait(16);
+    }
+    balls=balls.filter(b=>b.id!==ball.id);
+  }
+  doorOpen=0; targetDrawId=null;
+
+  const T=TEAMS.find(t=>t.name===next.team);
+  if(isDiv){
+    const div=goLeft?'Miller':'Budweiser';
+    divPicks.push({team:next.team,div,ball:Object.assign({},ball||{},{tag:T.tag,hex:T.hex,dk:shade(T.hex,-.42),ink:inkFor(T.hex),rim:rimFor(T.hex),rot:0})});
+    reveal={ball:divPicks[divPicks.length-1].ball,hex:T.hex,title:next.team,
+            sub:div.toUpperCase()+'  \u00b7  PICK '+divPicks.length};
+    document.getElementById('called').innerHTML=
+      '<div class="chip" style="background:'+T.hex+'"></div>'+
+      '<div><div class="name">'+next.team+'</div>'+
+      '<div class="sub">'+div+' &middot; draw '+divPicks.length+'</div></div>';
+    renderDivisions();
+  } else {
+    const isNew=goLeft;
+    if(isNew) seated.push(next.team);
+    drawn.push(Object.assign({},next,{seatedHere:isNew,slot:isNew?seated.length:null}));
+    reveal={ball:next,hex:next.hex,title:next.team,
+            sub:isNew?('SEATED AT PICK '+seated.length):'DEAD BALL'};
+    document.getElementById('called').innerHTML=
+      '<div class="chip" style="background:'+next.hex+'"></div>'+
+      '<div><div class="name">'+next.team+'</div>'+
+      '<div class="sub">Ball '+next.id+' &middot; draw '+drawn.length+'</div>'+
+      (isNew?'<div class="tagline seat">Seated at pick '+seated.length+'</div>'
+            :'<div class="tagline dead">Already seated &mdash; dead ball</div>')+'</div>';
+    document.getElementById('railPick').textContent='Draw '+drawn.length;
+    renderBoard(); renderPools(); renderLedger(); renderOddsValidation();
+  }
+  revealT=0;
+
+  drawing=false;
+  const finished = isDiv ? divPicks.length>=TEAMS.length
+                         : (seated.length>=TEAMS.length||drawn.length>=LOTTERY_TOTAL);
+  if(finished){
+    revealed=true;
+    const sb=document.getElementById('seedBox');
+    sb.textContent=seedHex; sb.className='mono-block';
+  }
+  syncMode();
+}
+
+/* ---------- panels ---------- */
+function renderBoard(){
+  const rows=[];
+  for(let i=0;i<TEAMS.length;i++){
+    const nm=seated[i];
+    if(nm){
+      const t=TEAMS.find(x=>x.name===nm);
+      rows.push('<div class="slot'+(i===seated.length-1?' fresh':'')+'">'+
+        '<span class="no">'+(i+1)+'</span>'+
+        '<span class="dot" style="background:'+t.hex+'"></span>'+
+        '<span>'+t.name+'</span>'+
+        '<span class="odds">'+t.count+' balls &middot; '+pct(t.count)+'</span></div>');
+    } else {
+      rows.push('<div class="slot open"><span class="no">'+(i+1)+'</span>'+
+        '<span class="dot"></span><span>&mdash;</span><span class="odds"></span></div>');
+    }
+  }
+  document.getElementById('board').innerHTML=rows.join('');
+  document.getElementById('boardCount').textContent=seated.length+' of '+TEAMS.length+' seated';
+}
+function renderDivisions(){
+  const put=(id,name)=>{
+    const list=divPicks.filter(p=>p.div===name);
+    const rows=[];
+    for(let i=0;i<5;i++){
+      const p=list[i];
+      if(p){
+        const t=TEAMS.find(x=>x.name===p.team);
+        rows.push('<div class="divrow"><span class="n">'+(i+1)+'</span>'+
+          '<span class="dot" style="background:'+t.hex+'"></span><span>'+t.name+'</span></div>');
+      } else rows.push('<div class="divrow open"><span class="n">'+(i+1)+'</span>'+
+          '<span class="dot"></span><span>&mdash;</span></div>');
+    }
+    document.getElementById(id).innerHTML=rows.join('');
+  };
+  put('millerList','Miller'); put('budList','Budweiser');
+  document.getElementById('divStatus').textContent=divPicks.length+' of '+TEAMS.length+' placed';
+}
+function renderPools(){
+  const left={}; TEAMS.forEach(t=>left[t.name]=t.count);
+  drawn.forEach(d=>left[d.team]--);
+  document.getElementById('pool').innerHTML=TEAMS.map(t=>{
+    const out=seated.includes(t.name);
+    return '<div class="pool-row'+(out?' seated':'')+'">'+
+      '<span class="dot" style="background:'+t.hex+'"></span><span>'+t.name+'</span>'+
+      '<span class="n">'+left[t.name]+' / '+t.count+'</span>'+
+      '<span class="pc">'+pct(t.count)+'</span></div>';
+  }).join('');
+  document.getElementById('poolTotal').textContent=(LOTTERY_TOTAL-drawn.length)+' balls';
+}
+function renderLedger(){
+  const el=document.getElementById('ledger');
+  if(mode==='division'){
+    if(!divPicks.length){ el.innerHTML='<div class="empty-note">No draws yet</div>'; return; }
+    el.innerHTML=divPicks.map((p,i)=>{
+      const t=TEAMS.find(x=>x.name===p.team);
+      return '<div class="led-row"><span class="pick">'+String(i+1).padStart(2,'0')+'</span>'+
+        '<span class="dot" style="background:'+t.hex+'"></span><span>'+p.team+'</span>'+
+        '<span class="code">'+p.div+'</span></div>';
+    }).reverse().join('');
+    return;
+  }
+  if(!drawn.length){ el.innerHTML='<div class="empty-note">No draws yet</div>'; return; }
+  el.innerHTML=drawn.map((d,i)=>
+    '<div class="led-row'+(d.seatedHere?'':' dup')+'">'+
+    '<span class="pick">'+String(i+1).padStart(2,'0')+'</span>'+
+    '<span class="dot" style="background:'+d.hex+'"></span><span>'+d.team+'</span>'+
+    '<span class="code">'+(d.seatedHere?'PICK '+d.slot:'dead')+'</span></div>').reverse().join('');
+}
+
+/* ---------- verify & export ---------- */
+function verify(){
+  const v=document.getElementById('verdict');
+  if(!armed){ v.className='verdict bad'; v.textContent='Not armed yet. Lock in the ten league words first.'; return; }
+  if(!revealed){ v.className='verdict bad'; v.textContent='Seed still sealed. Finish the draw to unseal it.'; return; }
+  const okCommit = sha256(seedHex+'|'+MANIFEST_STR)===commitHash;
+  const okFinal  = sha256(seedHex+'|'+words.join('|')).slice(0,32)===finalSeed;
+  let okSeq;
+  if(mode==='division'){
+    const rebuilt=shuffleTeams(sha256(finalSeed+'|divisions').slice(0,32));
+    okSeq=rebuilt.slice(0,divPicks.length).join(',')===divPicks.map(p=>p.team).join(',');
+  } else {
+    const rebuilt=shuffleWithSeed(finalSeed).map(b=>b.id);
+    okSeq=rebuilt.slice(0,drawn.length).join(',')===drawn.map(b=>b.id).join(',');
+  }
+  const all=okCommit&&okFinal&&okSeq;
+  v.className='verdict '+(all?'ok':'bad');
+  v.textContent=all
+    ? 'PASS \u2014 the published commitment matches the revealed seed, the seed plus the ten league words rebuilds the final seed, and reshuffling from it reproduces every draw in order.'
+    : 'FAIL \u2014 commitment '+okCommit+', final seed '+okFinal+', sequence '+okSeq+'. Do not accept these results.';
+}
+
+function exportLedger(){
+  const rows=[
+    'Goon Squad draw \u2014 audit record',
+    'Generated: '+new Date().toString(),
+    'Mode: '+(mode==='division'?'Division draw':'Draft lottery'),
+    '',
+    'Commitment, published before the words (SHA-256 of "seed|manifest"):',
+    '  '+commitHash,
+    'Sealed seed: '+(revealed?seedHex:'SEALED \u2014 draw incomplete'),
+    'League words, in manager order:',
+    ...TEAMS.map((t,i)=>'  '+t.name+': '+(words[i]||'\u2014')),
+    'Final seed = SHA-256("seed|word1|...|word10") truncated to 32 hex: '+(finalSeed||'\u2014'),
+    ''
+  ];
+  if(mode==='division'){
+    rows.push('DIVISIONS','Miller:',...divPicks.filter(p=>p.div==='Miller').map((p,i)=>'  '+(i+1)+'. '+p.team),
+      'Budweiser:',...divPicks.filter(p=>p.div==='Budweiser').map((p,i)=>'  '+(i+1)+'. '+p.team),'',
+      'Order drawn (1st->Miller, 2nd->Budweiser, alternating):',
+      ...divPicks.map((p,i)=>'  '+(i+1)+'. '+p.team+' -> '+p.div),'',
+      'To verify: divSeed = SHA-256(finalSeed+"|divisions") truncated to 32 hex,',
+      'then Fisher-Yates over '+DIV_MANIFEST+' driven by sfc32 from that seed.');
+  } else {
+    rows.push('DRAFT ORDER',
+      ...seated.map((nm,i)=>{const t=TEAMS.find(x=>x.name===nm);return '  '+(i+1)+'. '+nm+' ('+t.count+' balls, '+pct(t.count)+')';}),
+      ...(seated.length<TEAMS.length?['  (incomplete)']:[]),'',
+      'BALL BY BALL','Draw,Ball,Manager,Result',
+      ...drawn.map((d,i)=>'  '+(i+1)+','+d.id+','+d.team+','+(d.seatedHere?'seated at pick '+d.slot:'dead ball')),'',
+      'Manifest: '+MANIFEST_STR,'',
+      'To verify: Fisher-Yates over the manifest driven by sfc32 seeded from the',
+      'final seed (four 32-bit words, 16 warm-up calls).');
+  }
+  const url=URL.createObjectURL(new Blob([rows.join('\n')],{type:'text/plain'}));
+  const a=document.createElement('a');
+  a.href=url; a.download='goonsquad-draw-'+Date.now()+'.txt'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+document.getElementById('btnDraw').addEventListener('click',drawBallNow);
+document.getElementById('btnReset').addEventListener('click',newDraft);
+document.getElementById('btnVerify').addEventListener('click',verify);
+document.getElementById('btnExport').addEventListener('click',exportLedger);
+document.getElementById('btnLock').addEventListener('click',armMachine);
+document.getElementById('modeLottery').addEventListener('click',()=>setMode('lottery'));
+document.getElementById('modeDivision').addEventListener('click',()=>setMode('division'));
+
+newDraft();
+loop();
+
+</script>
+</body>
+</html>
