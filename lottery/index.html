@@ -535,9 +535,10 @@ function isFilling(){ return fillActive; }
 /* Whoever still has balls to land. Using the next queued ball instead would
    flash the following manager's name while the current one is still dropping,
    and would break outright once the queue empties. */
+function fillNeed(t){ return mode==='division'?1:t.count; }
 function fillingTeam(){
   const m=loadedByTeam();
-  for(const t of TEAMS) if(m[t.name]<t.count) return t;
+  for(const t of TEAMS) if(m[t.name]<fillNeed(t)) return t;
   return TEAMS[TEAMS.length-1];
 }
 function updateFillUI(){
@@ -552,13 +553,13 @@ function updateFillUI(){
     const t=TEAMS.find(x=>x.name===fillDoneTeam);
     el.innerHTML='<div class="chip" style="background:'+t.hex+'"></div>'+
       '<div><div class="name">'+t.name+'</div>'+
-      '<div class="tagline seat">'+t.count+' balls loaded &mdash; complete</div></div>';
+      '<div class="tagline seat">'+fillNeed(t)+(fillNeed(t)===1?' ball':' balls')+' loaded &mdash; complete</div></div>';
     return;
   }
   const t=fillingTeam();
   el.innerHTML='<div class="chip" style="background:'+t.hex+'"></div>'+
     '<div><div class="name">'+t.name+'</div>'+
-    '<div class="sub">'+m[t.name]+' of '+t.count+' in the globe</div></div>';
+    '<div class="sub">'+m[t.name]+' of '+fillNeed(t)+' in the globe</div></div>';
 }
 
 /* ---------- mode ---------- */
@@ -613,8 +614,11 @@ function step(){
     } else if(loadIdx<balls.length){
       const prev = loadIdx>0 ? balls[loadIdx-1] : null;
       const boundary = prev && balls[loadIdx].team!==prev.team;
-      // hold at a boundary until the completion beat has fired for that manager
-      if(!(boundary && fillSeenTeam!==prev.team)){
+      /* Hold at a manager boundary until that manager's completion beat has
+         fired. In the division draw every ball is a different manager, so this
+         must not stall waiting on a beat that has already been handled. */
+      const waiting = boundary && fillSeenTeam!==prev.team;
+      if(!waiting){
         tick++;
         if(tick%FILL_EVERY===0){ balls[loadIdx].state='falling'; loadIdx++; }
       }
@@ -750,7 +754,8 @@ function step(){
         b.counted=true; changed=true;
         const t=TEAMS.find(x=>x.name===b.team);
         const m=loadedByTeam();
-        if(m[b.team]>=t.count && fillSeenTeam!==b.team){
+        const need=(mode==='division')?1:t.count;   // one ball each in the division draw
+        if(m[b.team]>=need && fillSeenTeam!==b.team){
           fillSeenTeam=b.team; fillDoneTeam=b.team; fillPause=FILL_PAUSE;
         }
       }
@@ -986,7 +991,7 @@ function render(){
     ctx.fillText(t.name.toUpperCase(),CX-192,REVEAL_Y+4);
 
     // a pip per ball, filling as they drop, so the count is countable
-    const n=t.count, pw=15, px=CX+206-n*pw;
+    const n=fillNeed(t), pw=15, px=CX+206-n*pw;
     for(let i=0;i<n;i++){
       const on=i<m[t.name];
       ctx.beginPath(); ctx.arc(px+i*pw+6,REVEAL_Y-8,5.5,0,Math.PI*2);
@@ -996,7 +1001,7 @@ function render(){
     ctx.textAlign='right';
     ctx.font='600 13px "IBM Plex Mono",monospace';
     ctx.fillStyle=done?'#7fe0a8':'#eef2f7';
-    ctx.fillText(done?(t.count+' BALLS \u2014 COMPLETE'):(m[t.name]+' / '+t.count),CX+200,REVEAL_Y+14);
+    ctx.fillText(done?(fillNeed(t)+(fillNeed(t)===1?' BALL':' BALLS')+' \u2014 COMPLETE'):(m[t.name]+' / '+fillNeed(t)),CX+200,REVEAL_Y+14);
     ctx.textAlign='left';
   }
 
@@ -1247,10 +1252,10 @@ function renderPools(){
   if(isFilling()){
     const m=loadedByTeam();
     document.getElementById('pool').innerHTML=TEAMS.map(t=>{
-      const done=m[t.name]>=t.count;
+      const done=m[t.name]>=fillNeed(t);
       return '<div class="pool-row'+(done?'':' seated')+'" style="opacity:'+(m[t.name]?1:.35)+'">'+
         '<span class="dot" style="background:'+t.hex+'"></span><span>'+t.name+'</span>'+
-        '<span class="n">'+m[t.name]+' / '+t.count+'</span>'+
+        '<span class="n">'+m[t.name]+' / '+fillNeed(t)+'</span>'+
         '<span class="pc">'+(done?'\u2713':'')+'</span></div>';
     }).join('');
     document.getElementById('poolTotal').textContent='loading '+loadIdx+' / '+balls.length;
