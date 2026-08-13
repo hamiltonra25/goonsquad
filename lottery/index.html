@@ -430,6 +430,11 @@ let gust=0, loadIdx=0, tick=0, scramble=0, scrambleT=120;
 let rotAng=0, rotVel=.06, rotTarget=.06, rotT=60, stirScale=1;
 let doorOpen=0, targetDrawId=null;
 let reveal=null, revealT=0;
+/* Loading ceremony. Balls drop grouped by manager with a pause after each one
+   finishes, so everybody can count the balls into the globe themselves. It has
+   no bearing on the draw - the order was sealed before any of this. */
+const FILL_EVERY=14, FILL_PAUSE=48;
+let fillPause=0, fillDoneTeam=null, fillActive=true, fillSeenTeam=null;
 
 const LOTTERY_TOTAL=TOTAL;
 
@@ -447,7 +452,7 @@ const DIV_MANIFEST=TEAMS.map(t=>t.tag).join(',');
 
 function spawnBalls(list){
   balls=list.map((b,i)=>Object.assign({},b,{
-    x:CX+(Math.random()-.5)*12, y:-40-i*7,
+    x:CX+(Math.random()-.5)*12, y:-52-(i%3)*14,
     vx:0,vy:0,rot:Math.random()*6.28,spin:0,state:'queued'
   }));
   loadIdx=0; tick=0;
@@ -461,11 +466,11 @@ function newDraft(){
   commitHash=sha256(seedHex+'|'+MANIFEST_STR);
   finalSeed=''; words=[]; armed=false;
   order=[]; drawn=[]; seated=[]; divOrder=[]; divPicks=[];
-  revealed=false; drawing=false; doorOpen=0; targetDrawId=null; reveal=null;
+  revealed=false; drawing=false; doorOpen=0; targetDrawId=null; reveal=null; fillPause=0; fillDoneTeam=null; fillActive=true; fillSeenTeam=null;
   gust=0; scramble=0; scrambleT=120;
   rotAng=0; rotVel=.06; rotTarget=.06; rotT=60; stirScale=1;
 
-  spawnBalls(poolForMode());
+  spawnBalls(poolForMode()); fillActive=true; fillPause=0; fillDoneTeam=null; fillSeenTeam=null;
 
   document.getElementById('commitBox').textContent=commitHash;
   const sb=document.getElementById('seedBox');
@@ -521,12 +526,47 @@ function shuffleTeams(hex){
   return deck;
 }
 
+function loadedByTeam(){
+  const m={}; TEAMS.forEach(t=>m[t.name]=0);
+  for(const b of balls) if(b.state==='live') m[b.team]++;
+  return m;
+}
+function isFilling(){ return fillActive; }
+/* Whoever still has balls to land. Using the next queued ball instead would
+   flash the following manager's name while the current one is still dropping,
+   and would break outright once the queue empties. */
+function fillingTeam(){
+  const m=loadedByTeam();
+  for(const t of TEAMS) if(m[t.name]<t.count) return t;
+  return TEAMS[TEAMS.length-1];
+}
+function updateFillUI(){
+  renderPools();
+  const el=document.getElementById('called');
+  if(!isFilling()){
+    el.innerHTML='<div class="idle">'+(armed?'Loaded and armed &mdash; press draw':'Loaded &mdash; waiting on the league words')+'</div>';
+    return;
+  }
+  const m=loadedByTeam();
+  if(fillDoneTeam){
+    const t=TEAMS.find(x=>x.name===fillDoneTeam);
+    el.innerHTML='<div class="chip" style="background:'+t.hex+'"></div>'+
+      '<div><div class="name">'+t.name+'</div>'+
+      '<div class="tagline seat">'+t.count+' balls loaded &mdash; complete</div></div>';
+    return;
+  }
+  const t=fillingTeam();
+  el.innerHTML='<div class="chip" style="background:'+t.hex+'"></div>'+
+    '<div><div class="name">'+t.name+'</div>'+
+    '<div class="sub">'+m[t.name]+' of '+t.count+' in the globe</div></div>';
+}
+
 /* ---------- mode ---------- */
 function setMode(m){
   if(drawing||m===mode) return;
   mode=m;
-  drawn=[]; seated=[]; divPicks=[]; revealed=false; reveal=null;
-  spawnBalls(poolForMode());
+  drawn=[]; seated=[]; divPicks=[]; revealed=false; reveal=null; fillPause=0; fillDoneTeam=null; fillActive=true; fillSeenTeam=null;
+  spawnBalls(poolForMode()); fillActive=true; fillPause=0; fillDoneTeam=null; fillSeenTeam=null;
   document.getElementById('ledger').innerHTML='<div class="empty-note">No draws yet</div>';
   document.getElementById('called').innerHTML='<div class="idle">'+(armed?'Armed &mdash; press draw':'Waiting on the league words')+'</div>';
   document.getElementById('railPick').textContent='';
@@ -547,8 +587,8 @@ function syncMode(){
   const btn=document.getElementById('btnDraw');
   const finished=mode==='division' ? divPicks.length>=TEAMS.length
                                    : (seated.length>=TEAMS.length||drawn.length>=LOTTERY_TOTAL);
-  btn.disabled=!armed||finished||drawing;
-  btn.textContent=!armed?'Locked' : finished?'Complete' : 'Draw ball';
+  btn.disabled=!armed||finished||drawing||isFilling();
+  btn.textContent=isFilling()?'Loading balls' : !armed?'Locked' : finished?'Complete' : 'Draw ball';
 }
 function roundRect(x,y,w,h,r){
   ctx.beginPath();
@@ -564,9 +604,21 @@ function chrome(x0,y0,x1,y1){
 
 
 function step(){
-  if(loadIdx<balls.length){
-    tick++;
-    if(tick%2===0){ balls[loadIdx].state='falling'; loadIdx++; }
+  if(fillActive){
+    if(fillPause>0){
+      if(--fillPause===0){
+        fillDoneTeam=null; updateFillUI();
+        if(loadIdx>=balls.length){ fillActive=false; syncMode(); }
+      }
+    } else if(loadIdx<balls.length){
+      const prev = loadIdx>0 ? balls[loadIdx-1] : null;
+      const boundary = prev && balls[loadIdx].team!==prev.team;
+      // hold at a boundary until the completion beat has fired for that manager
+      if(!(boundary && fillSeenTeam!==prev.team)){
+        tick++;
+        if(tick%FILL_EVERY===0){ balls[loadIdx].state='falling'; loadIdx++; }
+      }
+    }
   }
 
   // stirrer speed wanders and flips direction at random so no steady spin forms
@@ -690,6 +742,21 @@ function step(){
   }
 
   gust+=(.3-gust)*.045;
+
+  if(fillActive){
+    let changed=false;
+    for(const b of balls){
+      if(b.state==='live'&&!b.counted){
+        b.counted=true; changed=true;
+        const t=TEAMS.find(x=>x.name===b.team);
+        const m=loadedByTeam();
+        if(m[b.team]>=t.count && fillSeenTeam!==b.team){
+          fillSeenTeam=b.team; fillDoneTeam=b.team; fillPause=FILL_PAUSE;
+        }
+      }
+    }
+    if(changed) updateFillUI();
+  }
 }
 
 
@@ -900,8 +967,41 @@ function render(){
     }
   }
 
+  // ---- loading counter, in the same slot the result banner uses ----
+  if(isFilling()){
+    const m=loadedByTeam();
+    const t=fillDoneTeam?TEAMS.find(x=>x.name===fillDoneTeam):fillingTeam();
+    const done=fillDoneTeam!==null;
+    ctx.fillStyle='rgba(10,16,27,.94)';
+    roundRect(CX-210,REVEAL_Y-32,420,64,8); ctx.fill();
+    ctx.strokeStyle=done?'#58be7d':t.hex; ctx.lineWidth=2;
+    roundRect(CX-210,REVEAL_Y-32,420,64,8); ctx.stroke();
+
+    ctx.textAlign='left'; ctx.textBaseline='middle';
+    ctx.fillStyle='rgba(134,149,168,.75)';
+    ctx.font='600 9px "IBM Plex Mono",monospace';
+    ctx.fillText(done?'LOADED':'LOADING',CX-192,REVEAL_Y-18);
+    ctx.fillStyle='#eef2f7';
+    ctx.font='30px "Bebas Neue",Impact,sans-serif';
+    ctx.fillText(t.name.toUpperCase(),CX-192,REVEAL_Y+4);
+
+    // a pip per ball, filling as they drop, so the count is countable
+    const n=t.count, pw=15, px=CX+206-n*pw;
+    for(let i=0;i<n;i++){
+      const on=i<m[t.name];
+      ctx.beginPath(); ctx.arc(px+i*pw+6,REVEAL_Y-8,5.5,0,Math.PI*2);
+      ctx.fillStyle=on?t.hex:'rgba(255,255,255,.10)'; ctx.fill();
+      if(on){ ctx.strokeStyle='rgba(255,255,255,.35)'; ctx.lineWidth=1; ctx.stroke(); }
+    }
+    ctx.textAlign='right';
+    ctx.font='600 13px "IBM Plex Mono",monospace';
+    ctx.fillStyle=done?'#7fe0a8':'#eef2f7';
+    ctx.fillText(done?(t.count+' BALLS \u2014 COMPLETE'):(m[t.name]+' / '+t.count),CX+200,REVEAL_Y+14);
+    ctx.textAlign='left';
+  }
+
   // ---- result banner, sitting above the globe where it cannot be missed ----
-  if(reveal){
+  if(reveal&&!isFilling()){
     const fade=Math.min(1,revealT/10);
     ctx.globalAlpha=fade;
     ctx.fillStyle='rgba(10,16,27,.92)';
@@ -1144,6 +1244,18 @@ function renderDivisions(){
   document.getElementById('divStatus').textContent=divPicks.length+' of '+TEAMS.length+' placed';
 }
 function renderPools(){
+  if(isFilling()){
+    const m=loadedByTeam();
+    document.getElementById('pool').innerHTML=TEAMS.map(t=>{
+      const done=m[t.name]>=t.count;
+      return '<div class="pool-row'+(done?'':' seated')+'" style="opacity:'+(m[t.name]?1:.35)+'">'+
+        '<span class="dot" style="background:'+t.hex+'"></span><span>'+t.name+'</span>'+
+        '<span class="n">'+m[t.name]+' / '+t.count+'</span>'+
+        '<span class="pc">'+(done?'\u2713':'')+'</span></div>';
+    }).join('');
+    document.getElementById('poolTotal').textContent='loading '+loadIdx+' / '+balls.length;
+    return;
+  }
   const left={}; TEAMS.forEach(t=>left[t.name]=t.count);
   drawn.forEach(d=>left[d.team]--);
   document.getElementById('pool').innerHTML=TEAMS.map(t=>{
