@@ -504,9 +504,15 @@ function renderManage() {
       </div>`;
 
     (ev.bets || []).forEach((bet, bIdx) => {
+      const lineBetsAll = cBets.filter(b => b.eventId === ev.id && b.betIdx === bIdx && b.status !== "deleted");
+      const pendingBets = lineBetsAll.filter(b => b.status === "pending");
+      const gradedBets  = lineBetsAll.filter(b => b.status !== "pending");
+
       html += `<div class="bet-block">
-        <div class="bet-label">${bet.label} ${bet.settled ? '<span style="color:#3B6D11;font-size:11px;">✓ Settled</span>' : ""}</div>`;
-      if (!bet.settled) {
+        <div class="bet-label">${bet.label} ${bet.settled && pendingBets.length === 0 ? '<span style="color:#3B6D11;font-size:11px;">✓ Settled</span>' : ""}</div>`;
+
+      // Grade controls: show whenever the line still has pending bets (or was never settled)
+      if (!bet.settled || pendingBets.length > 0) {
         html += `<div class="opt-row">`;
         (bet.options||[]).forEach((opt, oIdx) => {
           html += `<button class="btn-green" data-settleev="${ev.id}" data-bidx="${bIdx}" data-oidx="${oIdx}">${opt.label} Won</button>`;
@@ -514,12 +520,18 @@ function renderManage() {
         html += `<button class="btn-red" data-losev="${ev.id}" data-bidx="${bIdx}">No — all lose</button>`;
         html += `<button class="btn-orange" data-pushev="${ev.id}" data-bidx="${bIdx}">Push (refund all)</button>`;
         html += `</div>`;
-      } else {
-        const w = bet.winnerIdx === -1 ? "No winner — all lost"
-                : bet.winnerIdx != null ? (bet.options[bet.winnerIdx]?.label || "?")
-                : "Push";
-        html += `<div style="font-size:12px;color:#888;">Result: ${w}</div>`;
       }
+
+      // Per-bet list with individual Undo — shown for every already-graded bet on this line
+      gradedBets.forEach(b => {
+        const stCol = b.status === "won" ? "#3B6D11" : b.status === "lost" ? "#A32D2D" : "#C86A00";
+        const stLbl = { won:"Won", lost:"Lost", push:"Push" }[b.status] || b.status;
+        html += `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px;padding:4px 0;border-top:1px solid #f2f2f2;">
+          <span>${b.player} · ${b.optionLabel} · ${fmtShares(b.wager)} → <span style="color:${stCol};font-weight:600;">${stLbl}</span></span>
+          <button class="btn-gray" data-undobet="${b.id}" style="padding:4px 12px;font-size:11px;">Undo</button>
+        </div>`;
+      });
+
       html += `</div>`;
     });
 
@@ -808,6 +820,40 @@ function wireMain() {
         newBets[bIdx] = { ...bet, settled: true, winnerIdx: null };
         await updateDoc(doc(db, "custom_events", evId), { bets: newBets });
         toast(`Push — ${playerBets.length} wagers refunded`);
+      });
+    });
+
+    // Undo a single settled bet: reverse its balance impact, set back to pending, reopen its line for re-grading
+    app.querySelectorAll("[data-undobet]").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const betId = btn.dataset.undobet;
+        const b = cBets.find(x => x.id === betId);
+        if (!b) return;
+        if (!confirm(`Undo ${b.player}'s bet on "${b.optionLabel}" (${b.status})? Balance is reversed and the bet returns to pending.`)) return;
+
+        // Reverse the exact balance impact that settlement applied
+        let delta = 0;
+        if (b.status === "won")  delta = -(b.wager + b.toWin); // remove wager refund + winnings
+        if (b.status === "push") delta = -(b.wager);           // remove refund
+        // lost: no balance change was ever applied, nothing to reverse
+
+        if (delta !== 0) {
+          const cur = cBalances[b.player] ?? 0;
+          await setDoc(doc(db, "custom_balances", b.player), { amount: cur + delta });
+        }
+
+        // Set this bet back to pending
+        await updateDoc(doc(db, "custom_bets", betId), { status: "pending" });
+
+        // Reopen the parent bet line so the grade buttons return for re-grading
+        const ev = events.find(e => e.id === b.eventId);
+        if (ev && ev.bets && ev.bets[b.betIdx]) {
+          const newBets = [...ev.bets];
+          newBets[b.betIdx] = { ...newBets[b.betIdx], settled: false, winnerIdx: null };
+          await updateDoc(doc(db, "custom_events", b.eventId), { bets: newBets });
+        }
+
+        toast(`Undone — ${b.player}'s bet is pending again${delta !== 0 ? ` (${delta > 0 ? "+" : ""}${fmtShares(delta)})` : ""}`);
       });
     });
   }
