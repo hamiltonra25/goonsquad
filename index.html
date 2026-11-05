@@ -103,6 +103,13 @@
   .phase-tag.locked { color: var(--red); border-color: var(--red); }
   .phase-tag.settled { color: var(--cyan); border-color: var(--cyan); }
 
+  .pill-btn { background: none; border: 1px solid var(--line); color: var(--muted); font-size: 0.64rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; border-radius: 999px; padding: 0.22rem 0.65rem; cursor: pointer; }
+  .pill-btn:hover { color: var(--ink); border-color: var(--ink); }
+  .pill-btn.cyan { color: var(--cyan); border-color: var(--cyan); }
+  .pill-btn.cyan:hover { background: rgba(91,200,245,0.12); color: var(--cyan); border-color: var(--cyan); }
+  .pill-btn.red { color: var(--red); border-color: var(--red); }
+  .pill-btn.red:hover { background: rgba(229,105,122,0.12); color: var(--red); border-color: var(--red); }
+
   .group-head { display: flex; align-items: center; gap: 0.5rem; cursor: pointer; flex-wrap: nowrap; user-select: none; }
   .group-head .caret { color: var(--muted); font-size: 0.8rem; width: 0.9rem; flex-shrink: 0; }
   .group-head .event-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -227,7 +234,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import {
   getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut,
-  sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink, sendPasswordResetEmail
+  sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink, sendPasswordResetEmail, updatePassword
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 /* ============================================================
@@ -432,6 +439,7 @@ function renderTopbar(bal) {
     <div class="top-stats">
       <div class="stat"><span class="k">${esc(currentMember.name)}</span>
         <span class="v ${balCls} num">${fmtMoney(bal)}</span></div>
+      <button class="ghost-link" id="setpass">Password</button>
       <button class="ghost-link" id="signout">Sign out</button>
     </div>
   </div>`;
@@ -798,9 +806,9 @@ function renderManageCard(ev) {
       ${locked ? `<span class="phase-tag locked">Locked</span>` : `<span class="phase-tag open">Open</span>`}</div>
     <div class="event-sub">${esc(ev.subtitle || "")}</div>
     <div class="row" style="margin:0.5rem 0;">
-      <button class="btn-ghost btn-sm" data-editev="${ev.id}">Edit</button>
-      <button class="btn-ghost btn-sm" data-lockev="${ev.id}" data-locked="${ev.locked?"1":"0"}">${ev.locked?"Unlock":"Lock"}</button>
-      ${isCommish() ? `<button class="btn-red btn-sm" data-delev="${ev.id}">Delete</button>` : ""}
+      <button class="pill-btn cyan" data-editev="${ev.id}">Edit</button>
+      <button class="pill-btn" data-lockev="${ev.id}" data-locked="${ev.locked?"1":"0"}">${ev.locked?"Unlock":"Lock"}</button>
+      ${isCommish() ? `<button class="pill-btn red" data-delev="${ev.id}">Delete</button>` : ""}
     </div>`;
 
   (ev.bets || []).forEach((bet, bIdx) => {
@@ -942,6 +950,7 @@ function friendlyAuthError(e) {
 
 function wireMain() {
   document.getElementById("signout")?.addEventListener("click", () => signOut(auth));
+  document.getElementById("setpass")?.addEventListener("click", showPassSheet);
   appEl.querySelectorAll("[data-tab]").forEach(b => b.addEventListener("click", () => {
     activeTab = b.dataset.tab; selected = null; editingEventId = null; render();
   }));
@@ -1270,6 +1279,48 @@ async function undoBet(betId) {
     await updateDoc(doc(db, "custom_events", b.eventId), { bets: nb });
   }
   toast(`Undone — ${nameOf(b.player)}'s bet is pending again`);
+}
+
+/* ---------- set password (while signed in) ---------- */
+function showPassSheet() {
+  document.querySelector(".slip")?.remove();
+  const s = document.createElement("div");
+  s.className = "slip";
+  s.innerHTML = `<div class="slip-inner">
+    <div class="slip-head">
+      <div><span class="lbl">Set a password</span>
+        <div class="sub">Lets you sign in on any device (and the home-screen app) without waiting for an email.</div></div>
+      <button class="slip-close" id="ps-close">✕</button>
+    </div>
+    <div class="slip-row">
+      <input type="password" id="ps-val" placeholder="New password (6+ characters)" autocomplete="new-password">
+      <button class="btn" id="ps-save">Save</button>
+    </div>
+    <div class="slip-err" id="ps-msg"></div>
+  </div>`;
+  document.body.appendChild(s);
+  const val = document.getElementById("ps-val"); val.focus();
+  document.getElementById("ps-close").addEventListener("click", () => s.remove());
+  document.getElementById("ps-save").addEventListener("click", async () => {
+    const pw = val.value || "";
+    const msg = document.getElementById("ps-msg");
+    if (pw.length < 6) { msg.textContent = "Use at least 6 characters."; return; }
+    try {
+      await updatePassword(auth.currentUser, pw);
+      s.remove();
+      toast("Password set — use it to sign in anywhere");
+    } catch (e) {
+      const code = e && e.code ? e.code : "";
+      if (code === "auth/requires-recent-login") {
+        try {
+          await sendPasswordResetEmail(auth, authEmail);
+          msg.innerHTML = `<span class="ok">For security, check your email (${esc(authEmail)}) to finish setting your password.</span>`;
+        } catch (_) { msg.textContent = "Please sign out and back in, then try again."; }
+      } else {
+        msg.textContent = "Couldn't set password" + (code ? ` (${code})` : "") + ".";
+      }
+    }
+  });
 }
 
 /* ---------- bet slip ---------- */
