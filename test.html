@@ -463,7 +463,7 @@ function renderBoard() {
     });
     ungrouped.forEach(i => { html += boardBetBlock(ev, betsArr[i], i); });
     teams.forEach(t => {
-      html += `<div class="team-sub">${esc(t.name)}</div>`;
+      html += `<div class="team-sub">Props — ${esc(t.name)}</div>`;
       t.items.forEach(i => { html += boardBetBlock(ev, betsArr[i], i); });
     });
     html += `</div>`;
@@ -516,7 +516,18 @@ function renderActive() {
           <span class="phase-tag locked">Live</span>
           <span class="group-sum">${bets.length} bet${bets.length!==1?"s":""} · ${fmtMoney(atRisk)}</span>
         </div>`;
-      if (open) { html += `<div class="event-sub" style="margin-top:0.3rem;">${esc(ev.subtitle || "")}</div>`; bets.forEach(b => { html += liveBetRow(b); }); }
+      if (open) {
+        html += `<div class="event-sub" style="margin-top:0.3rem;">${esc(ev.subtitle || "")}</div>`;
+        const groupOf = b => ((ev.bets || [])[b.betIdx] || {}).group;
+        const mkt = bets.filter(b => !groupOf(b));
+        const byTeam = {};
+        bets.filter(b => groupOf(b)).forEach(b => { const g = groupOf(b); (byTeam[g] = byTeam[g] || []).push(b); });
+        mkt.forEach(b => { html += liveBetRow(b); });
+        Object.keys(byTeam).forEach(team => {
+          html += `<div class="team-sub">Props — ${esc(team)}</div>`;
+          byTeam[team].forEach(b => { html += liveBetRow(b); });
+        });
+      }
       html += `</div>`;
     });
   }
@@ -574,16 +585,12 @@ function renderSettled() {
     const sub = ev ? (ev.subtitle || "") : "";
     const key = "settled:" + eid + ":" + settledScope, open = openGroups.has(key);
     const net = list.reduce((s, b) => s + (b.status === "won" ? b.toWin : b.status === "lost" ? -b.wager : 0), 0);
-    const w = list.filter(b => b.status === "won").length;
-    const l = list.filter(b => b.status === "lost").length;
-    const p = list.filter(b => b.status === "push").length;
     const netCls = net > 0 ? "pos" : net < 0 ? "neg" : "";
     html += `<div class="event-card">
       <div class="group-head" data-togglegroup="${key}">
         <span class="caret">${open ? "▾" : "▸"}</span>
         <span class="event-title">${esc(title)}</span>
-        <span class="phase-tag settled">Settled</span>
-        <span class="group-sum">${w}-${l}-${p} · <span class="amt ${netCls}">${net===0?"even":signedMoney(net)}</span></span>
+        <span class="group-sum amt ${netCls}">${net===0?"even":signedMoney(net)}</span>
       </div>`;
     if (open) {
       if (sub) html += `<div class="event-sub" style="margin-top:0.3rem;">${esc(sub)}</div>`;
