@@ -733,11 +733,16 @@ function renderAdmin() {
     html += `<button class="btn btn-block" id="save-balances" style="margin-top:0.6rem;">Save balances</button></div>`;
   }
 
-  // Manage existing events
+  // Manage existing events — active (ungraded) first, then settled, each newest-first by date.
   const live = events.filter(e => !e.archived);
-  if (live.length) html += `<div class="day-divider">Posted events</div>`;
-  else html += `<div class="empty">No posted events. Create one from New Bets.</div>`;
-  live.forEach(ev => { html += (editingEventId === ev.id) ? renderEditPanel(ev) : renderManageCard(ev); });
+  const fullySettled = e => (e.bets || []).length > 0 && (e.bets || []).every(b => b.settled);
+  const dateOf = e => e.startTime || e.createdAt || 0;
+  const active = live.filter(e => !fullySettled(e)).sort((a, b) => dateOf(b) - dateOf(a));
+  const settled = live.filter(fullySettled).sort((a, b) => dateOf(b) - dateOf(a));
+  const card = ev => (editingEventId === ev.id) ? renderEditPanel(ev) : renderManageCard(ev);
+  if (!live.length) html += `<div class="empty">No posted events. Create one from New Bets.</div>`;
+  if (active.length) { html += `<div class="day-divider">Active</div>`; active.forEach(ev => { html += card(ev); }); }
+  if (settled.length) { html += `<div class="day-divider">Settled</div>`; settled.forEach(ev => { html += card(ev); }); }
   return html;
 }
 
