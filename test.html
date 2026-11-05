@@ -103,6 +103,11 @@
   .phase-tag.locked { color: var(--red); border-color: var(--red); }
   .phase-tag.settled { color: var(--cyan); border-color: var(--cyan); }
 
+  .group-head { display: flex; align-items: center; gap: 0.5rem; cursor: pointer; flex-wrap: wrap; user-select: none; }
+  .group-head .caret { color: var(--muted); font-size: 0.8rem; width: 0.9rem; flex-shrink: 0; }
+  .group-head .group-sum { margin-left: auto; font-size: 0.82rem; color: var(--muted); font-weight: 700; font-variant-numeric: tabular-nums; }
+  .team-sub { font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; color: var(--cyan); margin: 0.7rem 0 0.1rem; }
+
   .bet-block { border-top: 1px solid var(--line); padding: 0.6rem 0 0.2rem; margin-top: 0.5rem; }
   .bet-label { font-size: 0.85rem; font-weight: 700; color: var(--muted); margin-bottom: 0.45rem; text-transform: uppercase; letter-spacing: 0.03em; }
   .opt-row { display: flex; gap: 0.5rem; flex-wrap: wrap; }
@@ -262,6 +267,7 @@ let activeTab = "board";
 let settledScope = "all";        // Settled page: all | me
 let standingsView = "cumulative";// Standings: cumulative | week
 let standingsWeek = null;        // selected weekId for By Week
+let openGroups = new Set();      // expanded event groups in Settled / Active (collapsed by default)
 let events = [];                 // custom_events
 let cBets = [];                  // custom_bets
 let cBalances = {};              // custom_balances (keyed by legacyId)
@@ -446,21 +452,36 @@ function renderBoard() {
       </div>
       <div class="event-sub">${esc(ev.subtitle || "")}</div>`;
 
-    (ev.bets || []).forEach((bet, bIdx) => {
-      if (bet.settled) return;                    // only show lines still open
-      html += `<div class="bet-block"><div class="bet-label">${esc(bet.label)}</div><div class="opt-row">`;
-      (bet.options || []).forEach((opt, oIdx) => {
-        const mine = cBets.find(b => b.player === myId() && b.eventId === ev.id && b.betIdx === bIdx && b.optIdx === oIdx && b.status === "pending");
-        const cls = "opt-pill" + (mine ? " mine" : "");
-        html += `<span class="${cls}" data-event="${ev.id}" data-bidx="${bIdx}" data-oidx="${oIdx}"
-          data-odds="${opt.odds}" data-label="${esc(opt.label)}" data-betlabel="${esc(bet.label)}"
-          data-eventtitle="${esc(ev.title)}" data-locked="0">
-          <span>${esc(opt.label)}</span><span class="od">${fmtOdds(opt.odds)}</span></span>`;
-      });
-      html += `</div></div>`;
+    const betsArr = ev.bets || [];
+    const open = betsArr.map((_, i) => i).filter(i => !betsArr[i].settled);
+    const ungrouped = open.filter(i => !betsArr[i].group);
+    const teams = [];
+    open.filter(i => betsArr[i].group).forEach(i => {
+      let t = teams.find(x => x.name === betsArr[i].group);
+      if (!t) { t = { name: betsArr[i].group, items: [] }; teams.push(t); }
+      t.items.push(i);
+    });
+    ungrouped.forEach(i => { html += boardBetBlock(ev, betsArr[i], i); });
+    teams.forEach(t => {
+      html += `<div class="team-sub">${esc(t.name)}</div>`;
+      t.items.forEach(i => { html += boardBetBlock(ev, betsArr[i], i); });
     });
     html += `</div>`;
   });
+  return html;
+}
+
+function boardBetBlock(ev, bet, bIdx) {
+  let html = `<div class="bet-block"><div class="bet-label">${esc(bet.label)}</div><div class="opt-row">`;
+  (bet.options || []).forEach((opt, oIdx) => {
+    const mine = cBets.find(b => b.player === myId() && b.eventId === ev.id && b.betIdx === bIdx && b.optIdx === oIdx && b.status === "pending");
+    const cls = "opt-pill" + (mine ? " mine" : "");
+    html += `<span class="${cls}" data-event="${ev.id}" data-bidx="${bIdx}" data-oidx="${oIdx}"
+      data-odds="${opt.odds}" data-label="${esc(opt.label)}" data-betlabel="${esc(bet.label)}"
+      data-eventtitle="${esc(ev.title)}" data-locked="0">
+      <span>${esc(opt.label)}</span><span class="od">${fmtOdds(opt.odds)}</span></span>`;
+  });
+  html += `</div></div>`;
   return html;
 }
 
@@ -486,10 +507,16 @@ function renderActive() {
     html += `<div class="day-divider">In play · ${fmtMoney(risk)} riding</div>`;
     inPlayEvents.sort((a, b) => (a.startTime || 0) - (b.startTime || 0)).forEach(ev => {
       const bets = pend.filter(b => b.eventId === ev.id).sort((a, b) => a.player.localeCompare(b.player));
-      html += `<div class="event-card"><div class="event-head">
-        <span class="event-title">${esc(ev.title)}</span><span class="phase-tag locked">Live</span></div>
-        <div class="event-sub">${esc(ev.subtitle || "")}</div>`;
-      bets.forEach(b => { html += liveBetRow(b); });
+      const key = "active:" + ev.id, open = openGroups.has(key);
+      const atRisk = bets.reduce((s, b) => s + (b.wager || 0), 0);
+      html += `<div class="event-card">
+        <div class="group-head" data-togglegroup="${key}">
+          <span class="caret">${open ? "▾" : "▸"}</span>
+          <span class="event-title">${esc(ev.title)}</span>
+          <span class="phase-tag locked">Live</span>
+          <span class="group-sum">${bets.length} bet${bets.length!==1?"s":""} · ${fmtMoney(atRisk)}</span>
+        </div>`;
+      if (open) { html += `<div class="event-sub" style="margin-top:0.3rem;">${esc(ev.subtitle || "")}</div>`; bets.forEach(b => { html += liveBetRow(b); }); }
       html += `</div>`;
     });
   }
@@ -545,21 +572,34 @@ function renderSettled() {
     const list = groups[eid];
     const title = list[0].eventTitle || (ev && ev.title) || "Event";
     const sub = ev ? (ev.subtitle || "") : "";
-    html += `<div class="event-card"><div class="event-head">
-      <span class="event-title">${esc(title)}</span><span class="phase-tag settled">Settled</span></div>
-      ${sub ? `<div class="event-sub">${esc(sub)}</div>` : ""}`;
-    list.sort((a, b) => (a.betLabel || "").localeCompare(b.betLabel || "")).forEach(b => {
-      const delta = b.status === "won" ? b.toWin : b.status === "lost" ? -b.wager : 0;
-      const amtCls = delta > 0 ? "pos" : delta < 0 ? "neg" : "";
-      const chipLbl = { won:"Won", lost:"Lost", push:"Push" }[b.status];
-      html += `<div class="bet-block" style="display:flex;align-items:center;gap:0.5rem;">
-                <div style="flex:1;min-width:0;">
-          <div style="font-weight:700;">${esc(nameOf(b.player))} <span class="chip ${b.status}">${chipLbl}</span></div>
-          <div class="card-sub">${esc(b.betLabel)} · ${esc(b.optionLabel)} ${fmtOdds(b.odds)} · ${fmtMoney(b.wager)}</div>
-        </div>
-        <span class="amt ${amtCls} num">${delta===0?"push":signedMoney(delta)}</span>
+    const key = "settled:" + eid + ":" + settledScope, open = openGroups.has(key);
+    const net = list.reduce((s, b) => s + (b.status === "won" ? b.toWin : b.status === "lost" ? -b.wager : 0), 0);
+    const w = list.filter(b => b.status === "won").length;
+    const l = list.filter(b => b.status === "lost").length;
+    const p = list.filter(b => b.status === "push").length;
+    const netCls = net > 0 ? "pos" : net < 0 ? "neg" : "";
+    html += `<div class="event-card">
+      <div class="group-head" data-togglegroup="${key}">
+        <span class="caret">${open ? "▾" : "▸"}</span>
+        <span class="event-title">${esc(title)}</span>
+        <span class="phase-tag settled">Settled</span>
+        <span class="group-sum">${w}-${l}-${p} · <span class="amt ${netCls}">${net===0?"even":signedMoney(net)}</span></span>
       </div>`;
-    });
+    if (open) {
+      if (sub) html += `<div class="event-sub" style="margin-top:0.3rem;">${esc(sub)}</div>`;
+      list.sort((a, b) => (a.betLabel || "").localeCompare(b.betLabel || "")).forEach(b => {
+        const delta = b.status === "won" ? b.toWin : b.status === "lost" ? -b.wager : 0;
+        const amtCls = delta > 0 ? "pos" : delta < 0 ? "neg" : "";
+        const chipLbl = { won:"Won", lost:"Lost", push:"Push" }[b.status];
+        html += `<div class="bet-block" style="display:flex;align-items:center;gap:0.5rem;">
+          <div style="flex:1;min-width:0;">
+            <div style="font-weight:700;">${esc(nameOf(b.player))} <span class="chip ${b.status}">${chipLbl}</span></div>
+            <div class="card-sub">${esc(b.betLabel)} · ${esc(b.optionLabel)} ${fmtOdds(b.odds)} · ${fmtMoney(b.wager)}</div>
+          </div>
+          <span class="amt ${amtCls} num">${delta===0?"push":signedMoney(delta)}</span>
+        </div>`;
+      });
+    }
     html += `</div>`;
   });
   return html;
@@ -904,6 +944,11 @@ function wireMain() {
   document.getElementById("week-sel")?.addEventListener("change", e => {
     standingsWeek = e.target.value; render();
   });
+  appEl.querySelectorAll("[data-togglegroup]").forEach(h => h.addEventListener("click", () => {
+    const k = h.dataset.togglegroup;
+    if (openGroups.has(k)) openGroups.delete(k); else openGroups.add(k);
+    render();
+  }));
 
   // Board: tap an option → bet slip
   appEl.querySelectorAll(".opt-pill").forEach(pill => pill.addEventListener("click", () => {
@@ -934,6 +979,18 @@ function wireNewBets() {
   document.getElementById("add-prop")?.addEventListener("click", addPropRow);
   document.getElementById("add-pp")?.addEventListener("click", addPPRow);
   document.getElementById("create-event")?.addEventListener("click", createEvent);
+  // Keep prop "Team" dropdowns labelled with the typed team names.
+  const refreshTeamOpts = () => {
+    const a = (document.getElementById("ce-a")?.value || "").trim() || "Away";
+    const b = (document.getElementById("ce-b")?.value || "").trim() || "Home";
+    document.querySelectorAll(".pp-team, .prop-team").forEach(sel => {
+      const o = sel.querySelectorAll("option");
+      if (o[1]) o[1].textContent = a;
+      if (o[2]) o[2].textContent = b;
+    });
+  };
+  document.getElementById("ce-a")?.addEventListener("input", refreshTeamOpts);
+  document.getElementById("ce-b")?.addEventListener("input", refreshTeamOpts);
 }
 
 /* Manage/grade/balances wiring (Admin tab) */
@@ -976,6 +1033,13 @@ function wireAdmin() {
   appEl.querySelectorAll("[data-undobet]").forEach(b => b.addEventListener("click", () => undoBet(b.dataset.undobet)));
 }
 
+/* Team options for a prop row, drawn from the Away/Home fields (resolved at create). */
+function teamOpts() {
+  const a = (document.getElementById("ce-a")?.value || "").trim();
+  const b = (document.getElementById("ce-b")?.value || "").trim();
+  return `<option value="">No team</option><option value="away">${esc(a || "Away")}</option><option value="home">${esc(b || "Home")}</option>`;
+}
+
 /* ---------- player prop builder (over/under, -105 default) ---------- */
 function addPPRow() {
   const host = document.getElementById("pp-builder");
@@ -988,7 +1052,8 @@ function addPPRow() {
       <label class="field" style="flex:1;margin-bottom:0;"><span>Line</span><input class="inp pp-line" type="number" step="0.5" placeholder="15"></label>
       <label class="field" style="flex:1;margin-bottom:0;"><span>Over odds</span><input class="inp pp-over" type="number" value="-105"></label>
       <label class="field" style="flex:1;margin-bottom:0;"><span>Under odds</span><input class="inp pp-under" type="number" value="-105"></label>
-    </div>`;
+    </div>
+    <label class="field" style="margin-top:0.35rem;"><span>Team (groups the prop)</span><select class="inp pp-team">${teamOpts()}</select></label>`;
   host.appendChild(div);
 }
 
@@ -1000,6 +1065,7 @@ function addPropRow() {
   div.className = "prop-row card";
   div.innerHTML = `
     <label class="field"><span>Prop label</span><input class="inp prop-label" placeholder="e.g. AK HR"></label>
+    <label class="field"><span>Team (groups the prop)</span><select class="inp prop-team">${teamOpts()}</select></label>
     <div class="prop-opts">
       <div class="row-tight" style="margin-bottom:0.3rem;">
         <input class="inp prop-opt-label" placeholder="Option" value="Yes" style="flex:1;">
@@ -1065,6 +1131,7 @@ async function createEvent() {
       { label: `Over ${n}`, odds: intOdds("to-o", -105) }, { label: `Under ${n}`, odds: intOdds("to-u", -105) },
     ], settled: false, winnerIdx: null });
   }
+  const resolveTeam = v => v === "away" ? sideA : v === "home" ? sideB : undefined;
   if (document.getElementById("bt-pp").checked) {
     document.querySelectorAll(".pp-row").forEach(row => {
       const lbl = (row.querySelector(".pp-label").value || "").trim();
@@ -1072,10 +1139,13 @@ async function createEvent() {
       if (!lbl || isNaN(line)) return;
       const oo = parseInt(row.querySelector(".pp-over").value, 10);
       const uo = parseInt(row.querySelector(".pp-under").value, 10);
-      bets.push({ label: `${lbl} ${line}`, options: [
+      const group = resolveTeam(row.querySelector(".pp-team")?.value || "");
+      const bet = { label: `${lbl} ${line}`, options: [
         { label: `Over ${line}`, odds: isNaN(oo) ? -105 : oo },
         { label: `Under ${line}`, odds: isNaN(uo) ? -105 : uo },
-      ], settled: false, winnerIdx: null });
+      ], settled: false, winnerIdx: null };
+      if (group) bet.group = group;
+      bets.push(bet);
     });
   }
   if (document.getElementById("bt-prop").checked) {
@@ -1088,7 +1158,8 @@ async function createEvent() {
         const oo = parseInt(r.querySelector(".prop-opt-odds").value, 10);
         if (ol && !isNaN(oo)) options.push({ label: ol, odds: oo });
       });
-      if (options.length) bets.push({ label, options, settled: false, winnerIdx: null });
+      const group = resolveTeam(row.querySelector(".prop-team")?.value || "");
+      if (options.length) { const bet = { label, options, settled: false, winnerIdx: null }; if (group) bet.group = group; bets.push(bet); }
     });
   }
 
