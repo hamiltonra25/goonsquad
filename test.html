@@ -2,8 +2,19 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Goonsquad Bet</title>
+<meta name="description" content="Goonsquad Bet — real-money wager pool.">
+<!-- Add to Home Screen (full-screen app). iOS ignores the manifest display
+     mode, so it needs its own tags to launch without Safari chrome. -->
+<meta name="theme-color" content="#1d2240">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png">
+<link rel="icon" href="favicon-16.png" sizes="16x16" type="image/png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Goonsquad Bet">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -38,11 +49,11 @@
   input, select { font: inherit; }
   a { color: var(--cyan); }
   .num { font-variant-numeric: tabular-nums; }
-
+ 
   /* Top bar */
   .topbar {
     display: flex; align-items: center; gap: 1rem;
-    padding: 0.6rem 1.1rem; background: var(--bar);
+    padding: calc(0.6rem + env(safe-area-inset-top)) 1.1rem 0.6rem; background: var(--bar);
     position: sticky; top: 0; z-index: 40; flex-wrap: wrap;
   }
   .brand { font-weight: 800; font-size: 1.15rem; color: var(--ink); letter-spacing: 0.01em; flex-shrink: 0; }
@@ -66,21 +77,21 @@
   }
   .ghost-link { background: none; border: none; color: var(--muted); font-size: 0.82rem; }
   .ghost-link:hover { color: var(--ink); }
-
+ 
   .app { max-width: 60rem; margin: 0 auto; padding: 1rem 1.1rem 3rem; }
   .page-head { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin: 0.4rem 0 1rem; }
   .page-title { margin: 0; font-size: 1.3rem; font-weight: 800; }
   .page-sub { color: var(--muted); font-size: 0.85rem; margin: 0.1rem 0 0; }
-
+ 
   /* Segmented control */
   .seg { display: inline-flex; background: var(--panel); border: 1px solid var(--btn-border); border-radius: 8px; padding: 2px; margin-left: auto; }
   .seg-btn { background: none; border: none; color: var(--muted); font-weight: 700; font-size: 0.82rem; padding: 0.3rem 0.8rem; border-radius: 6px; }
   .seg-btn.on { background: var(--chip-bg); color: #0e1430; }
   .seg-btn:not(.on):hover { color: var(--ink); }
-
+ 
   /* Day divider */
   .day-divider { color: var(--muted); font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; margin: 1.1rem 0 0.5rem; }
-
+ 
   /* Event + bet cards */
   .event-card { background: var(--panel-deep); border-radius: 10px; padding: 0.9rem 1rem 1rem; margin-bottom: 0.9rem; }
   .event-head { display: flex; align-items: baseline; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.2rem; }
@@ -90,7 +101,7 @@
   .phase-tag.open { color: var(--green); border-color: var(--green); }
   .phase-tag.locked { color: var(--red); border-color: var(--red); }
   .phase-tag.settled { color: var(--cyan); border-color: var(--cyan); }
-
+ 
   .bet-block { border-top: 1px solid var(--line); padding: 0.6rem 0 0.2rem; margin-top: 0.5rem; }
   .bet-label { font-size: 0.85rem; font-weight: 700; color: var(--muted); margin-bottom: 0.45rem; text-transform: uppercase; letter-spacing: 0.03em; }
   .opt-row { display: flex; gap: 0.5rem; flex-wrap: wrap; }
@@ -106,7 +117,7 @@
   .opt-pill.won .od { color: var(--green); }
   .opt-pill.lost { opacity: 0.5; text-decoration: line-through; }
   .opt-pill.locked { cursor: default; }
-
+ 
   /* Generic cards / tickets */
   .card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 0.6rem 0.75rem; margin-bottom: 0.55rem; }
   .card-top { display: flex; align-items: center; gap: 0.5rem; }
@@ -119,7 +130,7 @@
   .chip.push { background: var(--muted); }
   .chip.pending { background: var(--chip-bg); }
   .amt.pos { color: var(--green); } .amt.neg { color: var(--red); }
-
+ 
   /* Tables */
   .tbl { width: 100%; border-collapse: collapse; background: var(--panel); border-radius: 8px; overflow: hidden; }
   .tbl th { text-align: left; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); padding: 0.55rem 0.75rem; background: var(--panel-deep); }
@@ -128,7 +139,7 @@
   .tbl th.r, .tbl td.r { text-align: right; }
   .tbl tr.me td { background: rgba(79, 168, 221, 0.10); }
   .avatar { width: 30px; height: 30px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.72rem; vertical-align: middle; margin-right: 0.5rem; }
-
+ 
   /* Buttons */
   .btn { background: var(--chip-bg); color: #0e1430; border: none; border-radius: 7px; padding: 0.5rem 1rem; font-weight: 700; font-size: 0.9rem; }
   .btn:disabled { opacity: 0.4; cursor: not-allowed; }
@@ -139,7 +150,7 @@
   .btn-red { background: var(--red); color: #0e1430; }
   .btn-orange { background: var(--orange); color: #0e1430; }
   .btn-gray { background: var(--btn); color: var(--muted); border: 1px solid var(--btn-border); }
-
+ 
   /* Forms */
   .field { display: block; margin-bottom: 0.7rem; }
   .field > span { display: block; font-size: 0.74rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 0.25rem; }
@@ -155,9 +166,9 @@
   .check { display: flex; align-items: center; gap: 0.5rem; padding: 0.4rem 0; font-weight: 700; }
   .check input { width: 1.1rem; height: 1.1rem; }
   .sub-inputs { margin: 0.3rem 0 0.6rem 1.6rem; padding-left: 0.8rem; border-left: 2px solid var(--line); }
-
+ 
   /* Auth */
-  .auth-page { max-width: 24rem; margin: 3rem auto; padding: 0 1rem; text-align: center; }
+  .auth-page { max-width: 24rem; margin: calc(2.5rem + env(safe-area-inset-top)) auto 3rem; padding: 0 1rem; text-align: center; }
   .auth-title { font-size: 1.6rem; font-weight: 800; }
   .auth-title span { color: var(--cyan); }
   .auth-sub { color: var(--muted); margin: 0.2rem 0 1.4rem; }
@@ -167,9 +178,9 @@
   .err { color: var(--red); font-size: 0.85rem; margin-top: 0.6rem; }
   .ok { color: var(--green); font-size: 0.85rem; margin-top: 0.6rem; }
   .callout { background: var(--panel); border: 1px solid var(--btn-border); border-radius: 8px; padding: 0.8rem; font-size: 0.88rem; }
-
+ 
   /* Bet slip (bottom sheet) */
-  .slip { position: fixed; bottom: 0; left: 0; right: 0; background: var(--bar); border-top: 1px solid var(--btn-border); padding: 0.9rem 1.1rem; box-shadow: 0 -6px 18px rgba(0,0,0,0.4); z-index: 100; }
+  .slip { position: fixed; bottom: 0; left: 0; right: 0; background: var(--bar); border-top: 1px solid var(--btn-border); padding: 0.9rem 1.1rem calc(0.9rem + env(safe-area-inset-bottom)); box-shadow: 0 -6px 18px rgba(0,0,0,0.4); z-index: 100; }
   .slip-inner { max-width: 60rem; margin: 0 auto; }
   .slip-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; margin-bottom: 0.6rem; }
   .slip-head .lbl { font-weight: 800; }
@@ -179,13 +190,13 @@
   .slip-row input { flex: 1; min-width: 0; padding: 0.6rem; border: 1px solid var(--btn-border); border-radius: 7px; background: var(--btn); color: var(--ink); font-variant-numeric: tabular-nums; }
   .slip-calc { color: var(--green); font-size: 0.85rem; margin-top: 0.5rem; font-weight: 700; }
   .slip-err { color: var(--red); font-size: 0.85rem; margin-top: 0.5rem; }
-
+ 
   .empty { text-align: center; color: var(--muted); padding: 3rem 0; font-size: 0.95rem; }
-
+ 
   .toast { position: fixed; top: 1rem; left: 50%; transform: translateX(-50%); background: #0e1430; border: 1px solid var(--btn-border); color: var(--ink); padding: 0.6rem 1.1rem; border-radius: 999px; font-size: 0.88rem; z-index: 999; opacity: 0; transition: opacity 0.25s; pointer-events: none; }
   .toast.show { opacity: 1; }
   .toast.error { border-color: var(--red); color: var(--red); }
-
+ 
   @media (max-width: 560px) {
     .top-stats { width: 100%; margin-left: 0; justify-content: space-between; }
     .seg { margin-left: 0; }
@@ -196,7 +207,7 @@
 <body>
 <div id="app"></div>
 <div class="toast" id="toast"></div>
-
+ 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
@@ -207,7 +218,7 @@ import {
   getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut,
   sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink, sendPasswordResetEmail
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-
+ 
 /* ============================================================
    CONFIG — the only block Rex edits before deploying
    ============================================================ */
@@ -219,7 +230,7 @@ const FIREBASE_CONFIG = {
   messagingSenderId: "518391194891",
   appId:             "1:518391194891:web:d16cead641b9e3c1a0ae0e",
 };
-
+ 
 /* ROSTER.  One row per person.
    - email:    the address they sign in with (case-insensitive).
    - name:     how they show up in the app.
@@ -236,15 +247,17 @@ const MEMBERS = [
   { legacyId: "Brez", name: "Brez", email: "cbrezovar11@gmail.com",  role: "linemaker" },
 ];
 /* ============================================================ */
-
+ 
 const COLORS   = ["#5bc8f5", "#58c48a", "#e0a44a", "#b58be0", "#e5697a", "#6fb2e8"];
 const BGS      = ["#1f3a55", "#1f3f33", "#3f3320", "#33264a", "#3f2430", "#223048"];
-
+ 
 let db, auth;
 let currentMember = null;        // resolved MEMBERS row for the signed-in user
 let authEmail = null;            // raw signed-in email (may not be a member)
 let activeTab = "board";
 let settledScope = "all";        // Settled page: all | me
+let standingsView = "cumulative";// Standings: cumulative | week
+let standingsWeek = null;        // selected weekId for By Week
 let events = [];                 // custom_events
 let cBets = [];                  // custom_bets
 let cBalances = {};              // custom_balances (keyed by legacyId)
@@ -252,9 +265,9 @@ let selected = null;             // bet slip selection
 let editingEventId = null;
 let createDraft = null;          // typed-event create form state
 let unsubEvents = null, unsubBets = null, unsubBals = null;
-
+ 
 const appEl = document.getElementById("app");
-
+ 
 /* ---------- helpers ---------- */
 function toast(msg, type) {
   const t = document.getElementById("toast");
@@ -287,7 +300,7 @@ function initialsOf(id) { const n = nameOf(id); return n.slice(0, 2).toUpperCase
 function isCommish() { return currentMember && currentMember.role === "commissioner"; }
 function canCreate() { return currentMember && (currentMember.role === "commissioner" || currentMember.role === "linemaker"); }
 function myId() { return currentMember ? currentMember.legacyId : null; }
-
+ 
 function isEventLocked(ev) {
   if (ev.locked) return true;
   if (ev.ignoreTimeLock) return false;          // explicitly opened "active now"
@@ -312,7 +325,31 @@ function toDatetimeLocal(ms) {
   return d.getFullYear() + "-" + pad(d.getMonth()+1) + "-" + pad(d.getDate()) + "T" + pad(d.getHours()) + ":" + pad(d.getMinutes());
 }
 function esc(s) { return String(s == null ? "" : s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
-
+ 
+/* ---------- week bucketing (Tue–Mon, CT), for By-Week standings ---------- */
+function ctYMD(ms) {
+  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Chicago", year:"numeric", month:"2-digit", day:"2-digit" }).format(new Date(ms));
+  const [y, m, d] = parts.split("-").map(Number);
+  return { y, m, d };
+}
+function weekId(ms) {
+  const { y, m, d } = ctYMD(ms);
+  const noon = new Date(Date.UTC(y, m - 1, d, 12));
+  const wd = noon.getUTCDay();            // 0 Sun .. 6 Sat
+  const since = (wd - 2 + 7) % 7;          // days since Tuesday
+  const start = new Date(noon.getTime() - since * 86400000);
+  const end = new Date(start.getTime() + 6 * 86400000);
+  const fmt = dt => new Intl.DateTimeFormat("en-US", { month:"short", day:"numeric", timeZone:"UTC" }).format(dt);
+  return { id: start.toISOString().slice(0, 10), label: `${fmt(start)} – ${fmt(end)}` };
+}
+function betWeekMs(b) {
+  const ev = events.find(e => e.id === b.eventId);
+  if (ev && ev.startTime) return ev.startTime;
+  if (b.createdAt && b.createdAt.seconds) return b.createdAt.seconds * 1000;
+  if (typeof b.createdAt === "number") return b.createdAt;
+  return Date.now();
+}
+ 
 /* ---------- firebase ---------- */
 function initFirebase() {
   const fbApp = initializeApp(FIREBASE_CONFIG);
@@ -345,7 +382,7 @@ async function ensureBalance(id) {
   const snap = await getDoc(ref);
   if (!snap.exists()) await setDoc(ref, { amount: 0 });
 }
-
+ 
 /* ============================================================
    RENDER
    ============================================================ */
@@ -354,7 +391,7 @@ function render() {
   if (!authEmail) { appEl.innerHTML = renderSignIn(); wireSignIn(); return; }
   // Signed in but not on the roster → access screen.
   if (!currentMember) { appEl.innerHTML = renderNotMember(); wireNotMember(); return; }
-
+ 
   const bal = cBalances[myId()] ?? 0;
   let html = renderTopbar(bal);
   html += `<div class="app">`;
@@ -367,7 +404,7 @@ function render() {
   appEl.innerHTML = html;
   wireMain();
 }
-
+ 
 function renderTopbar(bal) {
   const tabs = [["board","Board"],["active","Active"],["settled","Settled"],["standings","Standings"]];
   if (canCreate()) tabs.push(["admin","Admin"]);
@@ -387,43 +424,34 @@ function renderTopbar(bal) {
     </div>
   </div>`;
 }
-
-/* ---------- Board: open events to bet ---------- */
+ 
+/* ---------- Board: only events still open to bet ---------- */
 function renderBoard() {
-  const open = events.filter(e => !e.archived);
-  if (open.length === 0) return `<div class="empty">No events posted yet.${canCreate() ? " Head to Admin to create one." : ""}</div>`;
-
-  // Sort by start time (no-date last), group by day.
-  const sorted = [...open].sort((a, b) => (a.startTime || Infinity) - (b.startTime || Infinity));
+  // Placeable = not archived, not kicked off / locked, with at least one unsettled line.
+  const placeable = events.filter(e => !e.archived && !isEventLocked(e) && (e.bets || []).some(b => !b.settled));
+  if (placeable.length === 0)
+    return `<div class="empty">Nothing open to bet right now.${canCreate() ? " Create an event in Admin." : ""}</div>`;
+ 
+  const sorted = [...placeable].sort((a, b) => (a.startTime || Infinity) - (b.startTime || Infinity));
   let html = "", lastDay = null;
   sorted.forEach(ev => {
-    const locked = isEventLocked(ev);
-    const allSettled = (ev.bets || []).length > 0 && (ev.bets || []).every(b => b.settled);
     const d = dayLabel(ev.startTime);
     if (d !== lastDay) { html += `<div class="day-divider">${d}</div>`; lastDay = d; }
-
-    const phase = allSettled ? `<span class="phase-tag settled">Settled</span>`
-                : locked ? `<span class="phase-tag locked">Locked</span>`
-                : `<span class="phase-tag open">Open</span>`;
     html += `<div class="event-card">
       <div class="event-head">
-        <span class="event-title">${esc(ev.title)}</span>${phase}
+        <span class="event-title">${esc(ev.title)}</span><span class="phase-tag open">Open</span>
       </div>
       <div class="event-sub">${esc(ev.subtitle || "")}</div>`;
-
+ 
     (ev.bets || []).forEach((bet, bIdx) => {
+      if (bet.settled) return;                    // only show lines still open
       html += `<div class="bet-block"><div class="bet-label">${esc(bet.label)}</div><div class="opt-row">`;
       (bet.options || []).forEach((opt, oIdx) => {
-        const mine = cBets.find(b => b.player === myId() && b.eventId === ev.id && b.betIdx === bIdx && b.optIdx === oIdx && b.status !== "deleted");
-        const settled = bet.settled;
-        const winner = bet.winnerIdx === oIdx;
-        let cls = "opt-pill";
-        if (mine) cls += " mine";
-        if (settled) cls += winner ? " won" : " lost";
-        if (locked || settled) cls += " locked";
+        const mine = cBets.find(b => b.player === myId() && b.eventId === ev.id && b.betIdx === bIdx && b.optIdx === oIdx && b.status === "pending");
+        const cls = "opt-pill" + (mine ? " mine" : "");
         html += `<span class="${cls}" data-event="${ev.id}" data-bidx="${bIdx}" data-oidx="${oIdx}"
           data-odds="${opt.odds}" data-label="${esc(opt.label)}" data-betlabel="${esc(bet.label)}"
-          data-eventtitle="${esc(ev.title)}" data-locked="${locked || settled ? "1" : "0"}">
+          data-eventtitle="${esc(ev.title)}" data-locked="0">
           <span>${esc(opt.label)}</span><span class="od">${fmtOdds(opt.odds)}</span></span>`;
       });
       html += `</div></div>`;
@@ -432,20 +460,52 @@ function renderBoard() {
   });
   return html;
 }
-
-/* ---------- Active: my pending tickets ---------- */
+ 
+/* ---------- Active: live action across everyone + your upcoming ---------- */
 function renderActive() {
-  const mine = cBets.filter(b => b.player === myId() && b.status === "pending")
-    .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
   let html = `<div class="page-head"><h1 class="page-title">Active</h1></div>`;
-  if (mine.length === 0) return html + `<div class="empty">No open bets. Place one from the Board.</div>`;
-  const risk = mine.reduce((s, b) => s + (b.wager || 0), 0);
-  const pot  = mine.reduce((s, b) => s + (b.wager || 0) + (b.toWin || 0), 0);
-  html += `<p class="page-sub">${mine.length} open · ${fmtMoney(risk)} at risk · ${fmtMoney(pot)} back if all hit</p>`;
-  mine.forEach(b => { html += ticketCard(b, "pending"); });
+  const pend = cBets.filter(b => b.status === "pending");
+ 
+  // In play = pending bets on events that have kicked off (locked), not yet settled.
+  const inPlayEvents = events.filter(ev => !ev.archived && isEventLocked(ev) && pend.some(b => b.eventId === ev.id));
+  // Upcoming = your own pending bets on events that haven't kicked off (others' are hidden until close).
+  const myUpcoming = pend.filter(b => {
+    const ev = events.find(e => e.id === b.eventId);
+    return b.player === myId() && ev && !isEventLocked(ev);
+  });
+ 
+  if (inPlayEvents.length === 0 && myUpcoming.length === 0)
+    return html + `<div class="empty">Nothing in play yet. Bets appear here once their game kicks off.</div>`;
+ 
+  if (inPlayEvents.length) {
+    const risk = pend.filter(b => { const ev = events.find(e => e.id === b.eventId); return ev && isEventLocked(ev); })
+                     .reduce((s, b) => s + (b.wager || 0), 0);
+    html += `<div class="day-divider">In play · ${fmtMoney(risk)} riding</div>`;
+    inPlayEvents.sort((a, b) => (a.startTime || 0) - (b.startTime || 0)).forEach(ev => {
+      const bets = pend.filter(b => b.eventId === ev.id).sort((a, b) => a.player.localeCompare(b.player));
+      html += `<div class="event-card"><div class="event-head">
+        <span class="event-title">${esc(ev.title)}</span><span class="phase-tag locked">Live</span></div>
+        <div class="event-sub">${esc(ev.subtitle || "")}</div>`;
+      bets.forEach(b => { html += liveBetRow(b); });
+      html += `</div>`;
+    });
+  }
+  if (myUpcoming.length) {
+    html += `<div class="day-divider">Your upcoming bets</div>`;
+    myUpcoming.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)).forEach(b => { html += ticketCard(b, "pending"); });
+  }
   return html;
 }
-
+ 
+function liveBetRow(b) {
+  return `<div class="bet-block" style="display:flex;align-items:center;gap:0.5rem;">
+    <span class="avatar" style="background:${bgFor(b.player)};color:${colorFor(b.player)}">${initialsOf(b.player)}</span>
+    <div style="flex:1;min-width:0;">
+      <div style="font-weight:700;">${esc(nameOf(b.player))} <span style="color:var(--muted);font-weight:400;">· ${esc(b.betLabel)}</span></div>
+      <div class="card-sub"><strong>${esc(b.optionLabel)}</strong> ${fmtOdds(b.odds)} · ${fmtMoney(b.wager)} → ${fmtMoney(b.toWin)}</div>
+    </div></div>`;
+}
+ 
 function ticketCard(b, status) {
   const chip = { pending:"pending", won:"won", lost:"lost", push:"push" }[status] || "pending";
   const chipLbl = { pending:"Pending", won:"Won", lost:"Lost", push:"Push" }[status] || status;
@@ -455,8 +515,8 @@ function ticketCard(b, status) {
       · Wager ${fmtMoney(b.wager)} · To win ${fmtMoney(b.toWin)}</div>
   </div>`;
 }
-
-/* ---------- Settled: history (everyone by default) ---------- */
+ 
+/* ---------- Settled: everyone's activity, grouped by event ---------- */
 function renderSettled() {
   let html = `<div class="page-head"><h1 class="page-title">Settled</h1>
     <div class="seg">
@@ -466,66 +526,130 @@ function renderSettled() {
   let done = cBets.filter(b => ["won","lost","push"].includes(b.status));
   if (settledScope === "me") done = done.filter(b => b.player === myId());
   if (done.length === 0) return html + `<div class="empty">Nothing settled yet.</div>`;
-  done.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
-  done.forEach(b => {
-    const delta = b.status === "won" ? b.toWin : b.status === "lost" ? -b.wager : 0;
-    const amtCls = delta > 0 ? "pos" : delta < 0 ? "neg" : "";
-    const chip = b.status;
-    const chipLbl = { won:"Won", lost:"Lost", push:"Push" }[b.status];
-    html += `<div class="card">
-      <div class="card-top">
+ 
+  // Group settled bets by event.
+  const groups = {};
+  done.forEach(b => { (groups[b.eventId] = groups[b.eventId] || []).push(b); });
+  const lastBetMs = list => Math.max(...list.map(x => (x.createdAt?.seconds || 0) * 1000));
+  const order = Object.keys(groups).sort((a, b) => {
+    const ea = events.find(e => e.id === a), eb = events.find(e => e.id === b);
+    const ta = (ea && ea.startTime) || lastBetMs(groups[a]);
+    const tb = (eb && eb.startTime) || lastBetMs(groups[b]);
+    return tb - ta;
+  });
+ 
+  order.forEach(eid => {
+    const ev = events.find(e => e.id === eid);
+    const list = groups[eid];
+    const title = list[0].eventTitle || (ev && ev.title) || "Event";
+    const sub = ev ? (ev.subtitle || "") : "";
+    html += `<div class="event-card"><div class="event-head">
+      <span class="event-title">${esc(title)}</span><span class="phase-tag settled">Settled</span></div>
+      ${sub ? `<div class="event-sub">${esc(sub)}</div>` : ""}`;
+    list.sort((a, b) => (a.betLabel || "").localeCompare(b.betLabel || "")).forEach(b => {
+      const delta = b.status === "won" ? b.toWin : b.status === "lost" ? -b.wager : 0;
+      const amtCls = delta > 0 ? "pos" : delta < 0 ? "neg" : "";
+      const chipLbl = { won:"Won", lost:"Lost", push:"Push" }[b.status];
+      html += `<div class="bet-block" style="display:flex;align-items:center;gap:0.5rem;">
         <span class="avatar" style="background:${bgFor(b.player)};color:${colorFor(b.player)}">${initialsOf(b.player)}</span>
-        <span class="lbl">${esc(nameOf(b.player))}</span>
-        <span class="chip ${chip}">${chipLbl}</span>
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:700;">${esc(nameOf(b.player))} <span class="chip ${b.status}">${chipLbl}</span></div>
+          <div class="card-sub">${esc(b.betLabel)} · ${esc(b.optionLabel)} ${fmtOdds(b.odds)} · ${fmtMoney(b.wager)}</div>
+        </div>
         <span class="amt ${amtCls} num">${delta===0?"push":signedMoney(delta)}</span>
-      </div>
-      <div class="card-sub">${esc(b.eventTitle)} · ${esc(b.betLabel)} · ${esc(b.optionLabel)} ${fmtOdds(b.odds)}</div>
-    </div>`;
+      </div>`;
+    });
+    html += `</div>`;
   });
   return html;
 }
-
-/* ---------- Standings: cumulative bankroll ---------- */
+ 
+/* ---------- Standings: cumulative + by week (OFP-style) ---------- */
 function renderStandings() {
+  let html = `<div class="page-head"><h1 class="page-title">Standings</h1>
+    <div class="seg">
+      <button class="seg-btn ${standingsView==="cumulative"?"on":""}" data-sview="cumulative">Cumulative</button>
+      <button class="seg-btn ${standingsView==="week"?"on":""}" data-sview="week">By Week</button>
+    </div></div>`;
+  return html + (standingsView === "week" ? standingsWeekTable() : standingsCumulative());
+}
+ 
+function standingsCumulative() {
   const rows = MEMBERS.map(m => {
-    const pb = cBets.filter(b => b.player === m.legacyId && b.status !== "deleted");
-    return {
-      id: m.legacyId, name: m.name,
-      bal: cBalances[m.legacyId] ?? 0,
-      won: pb.filter(b => b.status === "won").length,
-      lost: pb.filter(b => b.status === "lost").length,
-      push: pb.filter(b => b.status === "push").length,
-      pending: pb.filter(b => b.status === "pending").length,
-      atRisk: pb.filter(b => b.status === "pending").reduce((s, b) => s + (b.wager || 0), 0),
-    };
-  }).sort((a, b) => b.bal - a.bal);
-
-  let html = `<div class="page-head"><h1 class="page-title">Standings</h1></div>`;
-  html += `<table class="tbl"><thead><tr>
-    <th>#</th><th>Player</th><th class="r">W-L-P</th><th class="r">At risk</th><th class="r">Balance</th>
+    const pend = cBets.filter(b => b.player === m.legacyId && b.status === "pending");
+    const inPlay = pend.reduce((s, b) => s + (b.wager || 0), 0);
+    const available = cBalances[m.legacyId] ?? 0;
+    return { id: m.legacyId, name: m.name, available, inPlay, total: available + inPlay };
+  }).sort((a, b) => b.total - a.total);
+ 
+  let html = `<table class="tbl"><thead><tr>
+    <th>#</th><th>Player</th><th class="r">Total</th><th class="r">Available</th><th class="r">In-Play</th>
   </tr></thead><tbody>`;
   rows.forEach((r, i) => {
     const meCls = r.id === myId() ? "me" : "";
-    const balCls = r.bal < 0 ? "neg" : r.bal > 0 ? "pos" : "";
+    const tCls = r.total < 0 ? "neg" : r.total > 0 ? "pos" : "";
     html += `<tr class="${meCls}">
-      <td>${i + 1}</td>
+      <td class="num">${i + 1}</td>
       <td><span class="avatar" style="background:${bgFor(r.id)};color:${colorFor(r.id)}">${initialsOf(r.id)}</span>${esc(r.name)}</td>
-      <td class="r">${r.won}-${r.lost}-${r.push}${r.pending ? ` <span style="color:var(--muted)">(${r.pending})</span>` : ""}</td>
-      <td class="r">${r.atRisk ? fmtMoney(r.atRisk) : "—"}</td>
-      <td class="r amt ${balCls}">${fmtMoney(r.bal)}</td>
+      <td class="r amt ${tCls} num">${fmtMoney(r.total)}</td>
+      <td class="r num">${fmtMoney(r.available)}</td>
+      <td class="r num">${r.inPlay ? fmtMoney(r.inPlay) : "—"}</td>
     </tr>`;
   });
-  html += `</tbody></table>`;
+  html += `</tbody></table>
+    <p class="page-sub" style="margin-top:0.6rem;">Ranked on total bankroll — money riding on open bets hasn't been lost yet.</p>`;
   return html;
 }
-
+ 
+function standingsWeekTable() {
+  const done = cBets.filter(b => ["won","lost","push"].includes(b.status));
+  const weeks = {};
+  done.forEach(b => { const w = weekId(betWeekMs(b)); (weeks[w.id] = weeks[w.id] || { label: w.label, bets: [] }).bets.push(b); });
+  const ids = Object.keys(weeks).sort((a, b) => b.localeCompare(a));   // newest first
+  if (ids.length === 0) return `<div class="empty">No settled weeks yet.</div>`;
+  if (!standingsWeek || !weeks[standingsWeek]) standingsWeek = ids[0];
+ 
+  let html = `<div class="row" style="margin-bottom:0.8rem;">
+    <label style="font-size:0.74rem;font-weight:700;color:var(--muted);text-transform:uppercase;">Week</label>
+    <select class="inp" id="week-sel" style="flex:1;max-width:18rem;">
+      ${ids.map(id => `<option value="${id}" ${id===standingsWeek?"selected":""}>${esc(weeks[id].label)}</option>`).join("")}
+    </select></div>`;
+ 
+  const wbets = weeks[standingsWeek].bets;
+  const rows = MEMBERS.map(m => {
+    const mb = wbets.filter(b => b.player === m.legacyId);
+    const net = mb.reduce((s, b) => s + (b.status === "won" ? b.toWin : b.status === "lost" ? -b.wager : 0), 0);
+    const risk = mb.reduce((s, b) => s + (b.wager || 0), 0);
+    return { id: m.legacyId, name: m.name, net, risk, tickets: mb.length };
+  }).filter(r => r.tickets > 0).sort((a, b) => b.net - a.net);
+  if (rows.length === 0) return html + `<div class="empty">No action settled that week.</div>`;
+ 
+  html += `<table class="tbl"><thead><tr>
+    <th>#</th><th>Player</th><th class="r">Net</th><th class="r">Risked</th><th class="r">Tickets</th>
+  </tr></thead><tbody>`;
+  rows.forEach((r, i) => {
+    const meCls = r.id === myId() ? "me" : "";
+    const nCls = r.net > 0 ? "pos" : r.net < 0 ? "neg" : "";
+    html += `<tr class="${meCls}">
+      <td class="num">${i + 1}</td>
+      <td><span class="avatar" style="background:${bgFor(r.id)};color:${colorFor(r.id)}">${initialsOf(r.id)}</span>${esc(r.name)}</td>
+      <td class="r amt ${nCls} num">${r.net === 0 ? "—" : signedMoney(r.net)}</td>
+      <td class="r num">${fmtMoney(r.risk)}</td>
+      <td class="r num">${r.tickets}</td>
+    </tr>`;
+  });
+  html += `</tbody></table>
+    <p class="page-sub" style="margin-top:0.6rem;">Net that week only — payout minus stake across settled tickets. Weeks run Tue–Mon.</p>`;
+  return html;
+}
+ 
 /* ============================================================
    ADMIN (commissioner + linemaker create/edit; commissioner grades)
    ============================================================ */
 function renderAdmin() {
   let html = `<div class="page-head"><h1 class="page-title">Admin</h1>
     <p class="page-sub">${isCommish() ? "Create lines, grade results, adjust balances." : "Create and edit lines. Grading is the commissioner's."}</p></div>`;
-
+ 
   // Balance editor — commissioner only
   if (isCommish()) {
     html += `<div class="admin-panel"><h3>Balances</h3>
@@ -539,17 +663,17 @@ function renderAdmin() {
     });
     html += `<button class="btn btn-block" id="save-balances" style="margin-top:0.6rem;">Save balances</button></div>`;
   }
-
+ 
   // Create event — typed (ML / Spread / Total) + custom props
   html += renderCreatePanel();
-
+ 
   // Manage existing events
   const live = events.filter(e => !e.archived);
   if (live.length) html += `<div class="day-divider">Posted events</div>`;
   live.forEach(ev => { html += (editingEventId === ev.id) ? renderEditPanel(ev) : renderManageCard(ev); });
   return html;
 }
-
+ 
 function renderCreatePanel() {
   const d = createDraft || {};
   return `<div class="admin-panel"><h3>Create event</h3>
@@ -564,45 +688,53 @@ function renderCreatePanel() {
     <label class="field"><span>Start date &amp; time</span>
       <input class="inp" id="ce-start" type="datetime-local" value="${d.start||""}"></label>
     <label class="check"><input type="checkbox" id="ce-opennow"> Open for betting now (ignore the start time — use this for events already underway)</label>
-
+ 
     <div style="margin-top:0.6rem;font-size:0.74rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.03em;">Bet types</div>
-
-    <label class="check"><input type="checkbox" class="bt-toggle" id="bt-ml"> Moneyline</label>
+ 
+    <label class="check"><input type="checkbox" class="bt-toggle" id="bt-ml"> Moneyline (outright winner)</label>
     <div class="sub-inputs" id="sub-ml" hidden>
       <div class="row">
-        <label class="field" style="flex:1;"><span>Side A odds</span><input class="inp" id="ml-a" type="number" value="-110"></label>
-        <label class="field" style="flex:1;"><span>Side B odds</span><input class="inp" id="ml-b" type="number" value="-110"></label>
+        <label class="field" style="flex:1;"><span>Side A odds</span><input class="inp" id="ml-a" type="number" placeholder="-150"></label>
+        <label class="field" style="flex:1;"><span>Side B odds</span><input class="inp" id="ml-b" type="number" placeholder="+130"></label>
       </div>
+      <p class="note" style="margin:0.1rem 0 0;">Winner and dog odds differ — enter each.</p>
     </div>
-
-    <label class="check"><input type="checkbox" class="bt-toggle" id="bt-sp"> Spread</label>
+ 
+    <label class="check"><input type="checkbox" class="bt-toggle" id="bt-sp"> Run line / spread</label>
     <div class="sub-inputs" id="sub-sp" hidden>
       <div class="row">
-        <label class="field" style="flex:1;"><span>Side A line</span><input class="inp" id="sp-line" type="number" step="0.5" placeholder="-3.5"></label>
-        <label class="field" style="flex:1;"><span>Side A odds</span><input class="inp" id="sp-a" type="number" value="-110"></label>
-        <label class="field" style="flex:1;"><span>Side B odds</span><input class="inp" id="sp-b" type="number" value="-110"></label>
+        <label class="field" style="flex:1;"><span>Favorite line</span><input class="inp" id="sp-line" type="number" step="0.5" placeholder="-6.5"></label>
+        <label class="field" style="flex:1;"><span>Side A odds</span><input class="inp" id="sp-a" type="number" value="-105"></label>
+        <label class="field" style="flex:1;"><span>Side B odds</span><input class="inp" id="sp-b" type="number" value="-105"></label>
       </div>
+      <p class="note" style="margin:0.1rem 0 0;">Side A gets the line you enter; the dog automatically gets the opposite.</p>
     </div>
-
-    <label class="check"><input type="checkbox" class="bt-toggle" id="bt-to"> Total</label>
+ 
+    <label class="check"><input type="checkbox" class="bt-toggle" id="bt-to"> Total runs (over/under)</label>
     <div class="sub-inputs" id="sub-to" hidden>
       <div class="row">
-        <label class="field" style="flex:1;"><span>Total (number)</span><input class="inp" id="to-num" type="number" step="0.5" placeholder="45.5"></label>
-        <label class="field" style="flex:1;"><span>Over odds</span><input class="inp" id="to-o" type="number" value="-110"></label>
-        <label class="field" style="flex:1;"><span>Under odds</span><input class="inp" id="to-u" type="number" value="-110"></label>
+        <label class="field" style="flex:1;"><span>Total</span><input class="inp" id="to-num" type="number" step="0.5" placeholder="8.5"></label>
+        <label class="field" style="flex:1;"><span>Over odds</span><input class="inp" id="to-o" type="number" value="-105"></label>
+        <label class="field" style="flex:1;"><span>Under odds</span><input class="inp" id="to-u" type="number" value="-105"></label>
       </div>
     </div>
-
-    <label class="check"><input type="checkbox" class="bt-toggle" id="bt-prop"> Custom prop(s)</label>
+ 
+    <label class="check"><input type="checkbox" class="bt-toggle" id="bt-pp"> Player prop(s) — over/under</label>
+    <div class="sub-inputs" id="sub-pp" hidden>
+      <div id="pp-builder"></div>
+      <button class="btn-ghost btn-sm" id="add-pp" type="button">+ Add player prop</button>
+    </div>
+ 
+    <label class="check"><input type="checkbox" class="bt-toggle" id="bt-prop"> Bonus prop(s) — custom odds</label>
     <div class="sub-inputs" id="sub-prop" hidden>
       <div id="prop-builder"></div>
-      <button class="btn-ghost btn-sm" id="add-prop" type="button">+ Add prop</button>
+      <button class="btn-ghost btn-sm" id="add-prop" type="button">+ Add bonus prop</button>
     </div>
-
+ 
     <button class="btn btn-block" id="create-event" style="margin-top:0.8rem;">Create event</button>
   </div>`;
 }
-
+ 
 function renderManageCard(ev) {
   const locked = isEventLocked(ev);
   let html = `<div class="event-card">
@@ -614,13 +746,13 @@ function renderManageCard(ev) {
       <button class="btn-ghost btn-sm" data-lockev="${ev.id}" data-locked="${ev.locked?"1":"0"}">${ev.locked?"Unlock":"Lock"}</button>
       ${isCommish() ? `<button class="btn-red btn-sm" data-delev="${ev.id}">Delete</button>` : ""}
     </div>`;
-
+ 
   (ev.bets || []).forEach((bet, bIdx) => {
     const lineBets = cBets.filter(b => b.eventId === ev.id && b.betIdx === bIdx && b.status !== "deleted");
     const pending = lineBets.filter(b => b.status === "pending");
     const graded  = lineBets.filter(b => b.status !== "pending");
     html += `<div class="bet-block"><div class="bet-label">${esc(bet.label)}</div>`;
-
+ 
     // Grading — commissioner only, while any pending remain
     if (isCommish() && (!bet.settled || pending.length > 0)) {
       html += `<div class="opt-row">`;
@@ -633,7 +765,7 @@ function renderManageCard(ev) {
     } else if (!isCommish()) {
       html += `<div class="card-sub">${bet.settled ? "Settled" : pending.length + " pending — Rex grades"}</div>`;
     }
-
+ 
     // Per-bet ledger with individual undo — commissioner only
     if (isCommish()) {
       graded.forEach(b => {
@@ -649,7 +781,7 @@ function renderManageCard(ev) {
   html += `</div>`;
   return html;
 }
-
+ 
 function renderEditPanel(ev) {
   let html = `<div class="admin-panel" style="border:1px solid var(--cyan);"><h3>Editing: ${esc(ev.title)}</h3>
     <label class="field"><span>Title</span><input class="inp" id="edit-title" value="${esc(ev.title)}"></label>
@@ -673,7 +805,7 @@ function renderEditPanel(ev) {
     </div></div>`;
   return html;
 }
-
+ 
 /* ============================================================
    AUTH SCREENS
    ============================================================ */
@@ -682,18 +814,23 @@ function renderSignIn() {
     <div class="auth-title">Goonsquad<span>Bet</span></div>
     <p class="auth-sub">Real-money wager pool.</p>
     <div class="auth-card">
-      <h2>Email &amp; password</h2>
+      <div class="callout" style="margin-bottom:0.9rem;">
+        <strong>First time here?</strong> Enter your email below and tap
+        <strong>“Email me a sign-in link.”</strong> The link signs you in and
+        creates your account — no password needed to start.
+      </div>
       <label class="field"><span>Email</span><input class="inp" id="si-email" type="email" autocomplete="email" placeholder="you@example.com"></label>
+      <button class="btn btn-block" id="si-link">Email me a sign-in link</button>
+      <div class="divider" style="text-align:center;">— or, if you've already set a password —</div>
       <label class="field"><span>Password</span><input class="inp" id="si-pass" type="password" autocomplete="current-password"></label>
-      <button class="btn btn-block" id="si-go">Sign in</button>
-      <button class="btn-ghost btn-block" id="si-link" style="margin-top:0.5rem;">Email me a sign-in link instead</button>
-      <button class="ghost-link" id="si-reset" style="margin-top:0.6rem;display:block;">Set or reset my password</button>
+      <button class="btn-ghost btn-block" id="si-go">Sign in with password</button>
+      <button class="ghost-link" id="si-reset" style="margin-top:0.6rem;display:block;">Reset my password (only works once your account exists)</button>
       <div id="si-msg"></div>
     </div>
-    <p class="auth-sub" style="font-size:0.78rem;">First time? Enter your email and tap “Email me a sign-in link” — the link signs you in and sets up your account. If it says you're not a member, ask Rex to add your email.</p>
+    <p class="auth-sub" style="font-size:0.78rem;">Not on the roster? If it says you're not a member, ask Rex to add your email.</p>
   </div>`;
 }
-
+ 
 function renderNotMember() {
   return `<div class="auth-page">
     <div class="auth-title">Almost there</div>
@@ -702,7 +839,7 @@ function renderNotMember() {
       <button class="btn-ghost btn-block" id="nm-signout" style="margin-top:0.8rem;">Sign out</button></div>
   </div>`;
 }
-
+ 
 /* ============================================================
    WIRING
    ============================================================ */
@@ -711,7 +848,7 @@ function wireSignIn() {
   const passEl  = document.getElementById("si-pass");
   const msg     = document.getElementById("si-msg");
   const show = (cls, text) => { msg.innerHTML = `<div class="${cls}">${text}</div>`; };
-
+ 
   document.getElementById("si-go")?.addEventListener("click", async () => {
     const email = (emailEl.value || "").trim();
     if (!email || !passEl.value) { show("err", "Enter your email and password."); return; }
@@ -746,7 +883,7 @@ function friendlyAuthError(e) {
   if (code === "auth/invalid-email") return "That doesn't look like a valid email.";
   return "Couldn't sign in" + (code ? ` (${code})` : "") + ".";
 }
-
+ 
 function wireMain() {
   document.getElementById("signout")?.addEventListener("click", () => signOut(auth));
   appEl.querySelectorAll("[data-tab]").forEach(b => b.addEventListener("click", () => {
@@ -755,7 +892,13 @@ function wireMain() {
   appEl.querySelectorAll("[data-scope]").forEach(b => b.addEventListener("click", () => {
     settledScope = b.dataset.scope; render();
   }));
-
+  appEl.querySelectorAll("[data-sview]").forEach(b => b.addEventListener("click", () => {
+    standingsView = b.dataset.sview; render();
+  }));
+  document.getElementById("week-sel")?.addEventListener("change", e => {
+    standingsWeek = e.target.value; render();
+  });
+ 
   // Board: tap an option → bet slip
   appEl.querySelectorAll(".opt-pill").forEach(pill => pill.addEventListener("click", () => {
     if (pill.dataset.locked === "1") return;
@@ -766,23 +909,25 @@ function wireMain() {
     };
     showSlip();
   }));
-
+ 
   if (activeTab === "admin" && canCreate()) wireAdmin();
 }
-
+ 
 function wireAdmin() {
   // Bet-type toggles reveal their inputs
   appEl.querySelectorAll(".bt-toggle").forEach(cb => {
-    const map = { "bt-ml":"sub-ml", "bt-sp":"sub-sp", "bt-to":"sub-to", "bt-prop":"sub-prop" };
+    const map = { "bt-ml":"sub-ml", "bt-sp":"sub-sp", "bt-to":"sub-to", "bt-pp":"sub-pp", "bt-prop":"sub-prop" };
     cb.addEventListener("change", () => {
       const sub = document.getElementById(map[cb.id]);
       if (sub) sub.hidden = !cb.checked;
       if (cb.id === "bt-prop" && cb.checked && !document.querySelector(".prop-row")) addPropRow();
+      if (cb.id === "bt-pp" && cb.checked && !document.querySelector(".pp-row")) addPPRow();
     });
   });
   document.getElementById("add-prop")?.addEventListener("click", addPropRow);
+  document.getElementById("add-pp")?.addEventListener("click", addPPRow);
   document.getElementById("create-event")?.addEventListener("click", createEvent);
-
+ 
   // Balances (commissioner)
   document.getElementById("save-balances")?.addEventListener("click", async () => {
     const inputs = appEl.querySelectorAll(".bal-edit");
@@ -793,7 +938,7 @@ function wireAdmin() {
     }
     toast("Balances saved");
   });
-
+ 
   // Edit / lock / delete
   appEl.querySelectorAll("[data-editev]").forEach(b => b.addEventListener("click", () => { editingEventId = b.dataset.editev; render(); }));
   document.getElementById("cancel-edit")?.addEventListener("click", () => { editingEventId = null; render(); });
@@ -812,30 +957,46 @@ function wireAdmin() {
     await deleteDoc(doc(db, "custom_events", evId));
     toast("Event deleted, pending bets refunded");
   }));
-
+ 
   // Grading (commissioner)
   appEl.querySelectorAll("[data-settleev]").forEach(b => b.addEventListener("click", () => gradeWinner(b.dataset.settleev, +b.dataset.bidx, +b.dataset.oidx)));
   appEl.querySelectorAll("[data-losev]").forEach(b => b.addEventListener("click", () => gradeNoWinner(b.dataset.losev, +b.dataset.bidx)));
   appEl.querySelectorAll("[data-pushev]").forEach(b => b.addEventListener("click", () => gradePush(b.dataset.pushev, +b.dataset.bidx)));
   appEl.querySelectorAll("[data-undobet]").forEach(b => b.addEventListener("click", () => undoBet(b.dataset.undobet)));
 }
-
-/* ---------- custom prop builder ---------- */
+ 
+/* ---------- player prop builder (over/under, -105 default) ---------- */
+function addPPRow() {
+  const host = document.getElementById("pp-builder");
+  if (!host) return;
+  const div = document.createElement("div");
+  div.className = "pp-row card";
+  div.innerHTML = `
+    <label class="field"><span>Player &amp; stat</span><input class="inp pp-label" placeholder="e.g. AK FDP"></label>
+    <div class="row-tight">
+      <label class="field" style="flex:1;margin-bottom:0;"><span>Line</span><input class="inp pp-line" type="number" step="0.5" placeholder="15"></label>
+      <label class="field" style="flex:1;margin-bottom:0;"><span>Over odds</span><input class="inp pp-over" type="number" value="-105"></label>
+      <label class="field" style="flex:1;margin-bottom:0;"><span>Under odds</span><input class="inp pp-under" type="number" value="-105"></label>
+    </div>`;
+  host.appendChild(div);
+}
+ 
+/* ---------- bonus / custom prop builder (custom odds; Yes is often the only line) ---------- */
 function addPropRow() {
   const host = document.getElementById("prop-builder");
   if (!host) return;
   const div = document.createElement("div");
   div.className = "prop-row card";
   div.innerHTML = `
-    <label class="field"><span>Prop label</span><input class="inp prop-label" placeholder="e.g. First TD scorer — over 1.5"></label>
+    <label class="field"><span>Prop label</span><input class="inp prop-label" placeholder="e.g. AK HR"></label>
     <div class="prop-opts">
       <div class="row-tight" style="margin-bottom:0.3rem;">
-        <input class="inp prop-opt-label" placeholder="Option (e.g. Yes)" style="flex:1;">
-        <input class="inp prop-opt-odds" type="number" placeholder="odds" value="-110" style="width:6rem;">
+        <input class="inp prop-opt-label" placeholder="Option" value="Yes" style="flex:1;">
+        <input class="inp prop-opt-odds" type="number" placeholder="odds (e.g. +250)" style="width:7rem;">
       </div>
       <div class="row-tight" style="margin-bottom:0.3rem;">
-        <input class="inp prop-opt-label" placeholder="Option (e.g. No)" style="flex:1;">
-        <input class="inp prop-opt-odds" type="number" placeholder="odds" value="-110" style="width:6rem;">
+        <input class="inp prop-opt-label" placeholder="Option (optional, e.g. No)" style="flex:1;">
+        <input class="inp prop-opt-odds" type="number" placeholder="odds" style="width:7rem;">
       </div>
     </div>
     <button class="btn-ghost btn-sm prop-add-opt" type="button">+ Add option</button>`;
@@ -845,11 +1006,11 @@ function addPropRow() {
     const r = document.createElement("div");
     r.className = "row-tight"; r.style.marginBottom = "0.3rem";
     r.innerHTML = `<input class="inp prop-opt-label" placeholder="Option" style="flex:1;">
-      <input class="inp prop-opt-odds" type="number" placeholder="odds" value="-110" style="width:6rem;">`;
+      <input class="inp prop-opt-odds" type="number" placeholder="odds" style="width:7rem;">`;
     opts.appendChild(r);
   });
 }
-
+ 
 /* ---------- create event (typed) ---------- */
 async function createEvent() {
   const title = (document.getElementById("ce-title").value || "").trim();
@@ -859,32 +1020,48 @@ async function createEvent() {
   const startTime = startRaw ? new Date(startRaw).getTime() : null;
   const openNow = document.getElementById("ce-opennow").checked;
   if (!title) { toast("Enter an event title.", "error"); return; }
-
+ 
   const bets = [];
   const num = id => { const v = parseFloat(document.getElementById(id).value); return isNaN(v) ? null : v; };
-  const intOdds = id => { const v = parseInt(document.getElementById(id).value, 10); return isNaN(v) ? -110 : v; };
-
+  const intOdds = (id, fb) => { const v = parseInt(document.getElementById(id).value, 10); return isNaN(v) ? fb : v; };
+ 
   if (document.getElementById("bt-ml").checked) {
     if (!sideA || !sideB) { toast("Moneyline needs both side names.", "error"); return; }
+    const a = parseInt(document.getElementById("ml-a").value, 10);
+    const b = parseInt(document.getElementById("ml-b").value, 10);
+    if (isNaN(a) || isNaN(b)) { toast("Enter both moneyline odds (they differ for favorite and dog).", "error"); return; }
     bets.push({ label: "Moneyline", options: [
-      { label: sideA, odds: intOdds("ml-a") }, { label: sideB, odds: intOdds("ml-b") },
+      { label: sideA, odds: a }, { label: sideB, odds: b },
     ], settled: false, winnerIdx: null });
   }
   if (document.getElementById("bt-sp").checked) {
     const line = num("sp-line");
-    if (!sideA || !sideB || line === null) { toast("Spread needs both sides and a line.", "error"); return; }
+    if (!sideA || !sideB || line === null) { toast("Run line needs both sides and a line.", "error"); return; }
     const aLine = line, bLine = -line;
-    bets.push({ label: "Spread", options: [
-      { label: `${sideA} ${aLine > 0 ? "+" : ""}${aLine}`, odds: intOdds("sp-a") },
-      { label: `${sideB} ${bLine > 0 ? "+" : ""}${bLine}`, odds: intOdds("sp-b") },
+    bets.push({ label: "Run line", options: [
+      { label: `${sideA} ${aLine > 0 ? "+" : ""}${aLine}`, odds: intOdds("sp-a", -105) },
+      { label: `${sideB} ${bLine > 0 ? "+" : ""}${bLine}`, odds: intOdds("sp-b", -105) },
     ], settled: false, winnerIdx: null });
   }
   if (document.getElementById("bt-to").checked) {
     const n = num("to-num");
     if (n === null) { toast("Total needs a number.", "error"); return; }
     bets.push({ label: "Total", options: [
-      { label: `Over ${n}`, odds: intOdds("to-o") }, { label: `Under ${n}`, odds: intOdds("to-u") },
+      { label: `Over ${n}`, odds: intOdds("to-o", -105) }, { label: `Under ${n}`, odds: intOdds("to-u", -105) },
     ], settled: false, winnerIdx: null });
+  }
+  if (document.getElementById("bt-pp").checked) {
+    document.querySelectorAll(".pp-row").forEach(row => {
+      const lbl = (row.querySelector(".pp-label").value || "").trim();
+      const line = parseFloat(row.querySelector(".pp-line").value);
+      if (!lbl || isNaN(line)) return;
+      const oo = parseInt(row.querySelector(".pp-over").value, 10);
+      const uo = parseInt(row.querySelector(".pp-under").value, 10);
+      bets.push({ label: `${lbl} ${line}`, options: [
+        { label: `Over ${line}`, odds: isNaN(oo) ? -105 : oo },
+        { label: `Under ${line}`, odds: isNaN(uo) ? -105 : uo },
+      ], settled: false, winnerIdx: null });
+    });
   }
   if (document.getElementById("bt-prop").checked) {
     document.querySelectorAll(".prop-row").forEach(row => {
@@ -899,9 +1076,9 @@ async function createEvent() {
       if (options.length) bets.push({ label, options, settled: false, winnerIdx: null });
     });
   }
-
+ 
   if (bets.length === 0) { toast("Pick at least one bet type.", "error"); return; }
-
+ 
   await addDoc(collection(db, "custom_events"), {
     title, subtitle: startTime ? fmtDateLabel(startTime) : (openNow ? "Live now" : ""),
     sideA, sideB, startTime, ignoreTimeLock: openNow,
@@ -913,7 +1090,7 @@ async function createEvent() {
   activeTab = "board";
   render();
 }
-
+ 
 async function saveEdit() {
   const evId = document.getElementById("save-edit").dataset.evid;
   const ev = events.find(e => e.id === evId);
@@ -923,7 +1100,7 @@ async function saveEdit() {
   const startRaw = document.getElementById("edit-start").value;
   const startTime = startRaw ? new Date(startRaw).getTime() : null;
   const openNow = document.getElementById("edit-opennow").checked;
-
+ 
   const newBets = (ev.bets || []).map((bet, bIdx) => {
     const lblEl = document.querySelector(`.edit-bet-label[data-bidx="${bIdx}"]`);
     const nb = { ...bet, label: (lblEl && lblEl.value.trim()) || bet.label };
@@ -937,7 +1114,7 @@ async function saveEdit() {
     });
     return nb;
   });
-
+ 
   await updateDoc(doc(db, "custom_events", evId), {
     title, startTime, ignoreTimeLock: openNow,
     subtitle: startTime ? fmtDateLabel(startTime) : (openNow ? "Live now" : (ev.subtitle || "")),
@@ -947,7 +1124,7 @@ async function saveEdit() {
   toast("Event updated");
   render();
 }
-
+ 
 /* ---------- grading (commissioner) ---------- */
 async function gradeWinner(evId, bIdx, oIdx) {
   const ev = events.find(e => e.id === evId); const bet = ev?.bets?.[bIdx]; if (!bet) return;
@@ -996,7 +1173,7 @@ async function undoBet(betId) {
   }
   toast(`Undone — ${nameOf(b.player)}'s bet is pending again`);
 }
-
+ 
 /* ---------- bet slip ---------- */
 function showSlip() {
   document.querySelector(".slip")?.remove();
@@ -1043,7 +1220,7 @@ function showSlip() {
     toast("Bet placed");
   });
 }
-
+ 
 /* ============================================================
    BOOT
    ============================================================ */
