@@ -413,8 +413,6 @@ function render() {
 function renderTopbar(bal) {
   const tabs = [["board","Board"],["active","Active"],["settled","Settled"],["standings","Balances"]];
   if (canCreate()) { tabs.push(["new","New Bets"]); tabs.push(["admin","Admin"]); }
-  const roleTag = currentMember.role !== "player"
-    ? `<span class="role-tag">${currentMember.role === "commissioner" ? "Commish" : "Lines"}</span>` : "";
   const balCls = bal < 0 ? "neg" : (bal > 0 ? "pos" : "");
   return `
   <div class="topbar">
@@ -423,7 +421,7 @@ function renderTopbar(bal) {
       ${tabs.map(([k,l]) => `<button data-tab="${k}" class="${activeTab===k?"active":""}">${l}</button>`).join("")}
     </nav>
     <div class="top-stats">
-      <div class="stat"><span class="k">${esc(currentMember.name)}${roleTag}</span>
+      <div class="stat"><span class="k">${esc(currentMember.name)}</span>
         <span class="v ${balCls} num">${fmtMoney(bal)}</span></div>
       <button class="ghost-link" id="signout">Sign out</button>
     </div>
@@ -687,10 +685,10 @@ function renderCreatePanel() {
     <label class="field"><span>Event title</span>
       <input class="inp" id="ce-title" placeholder="e.g. Chiefs @ Bills" value="${esc(d.title||"")}"></label>
     <div class="row">
-      <label class="field" style="flex:1;min-width:8rem;"><span>Side A (home)</span>
-        <input class="inp" id="ce-a" placeholder="Bills" value="${esc(d.sideA||"")}"></label>
-      <label class="field" style="flex:1;min-width:8rem;"><span>Side B (away)</span>
-        <input class="inp" id="ce-b" placeholder="Chiefs" value="${esc(d.sideB||"")}"></label>
+      <label class="field" style="flex:1;min-width:8rem;"><span>Away (left)</span>
+        <input class="inp" id="ce-a" placeholder="Chiefs" value="${esc(d.sideA||"")}"></label>
+      <label class="field" style="flex:1;min-width:8rem;"><span>Home (right)</span>
+        <input class="inp" id="ce-b" placeholder="Bills" value="${esc(d.sideB||"")}"></label>
     </div>
     <label class="field"><span>Start date &amp; time</span>
       <input class="inp" id="ce-start" type="datetime-local" value="${d.start||""}"></label>
@@ -701,8 +699,8 @@ function renderCreatePanel() {
     <label class="check"><input type="checkbox" class="bt-toggle" id="bt-ml"> Moneyline (outright winner)</label>
     <div class="sub-inputs" id="sub-ml" hidden>
       <div class="row">
-        <label class="field" style="flex:1;"><span>Side A odds</span><input class="inp" id="ml-a" type="number" placeholder="-150"></label>
-        <label class="field" style="flex:1;"><span>Side B odds</span><input class="inp" id="ml-b" type="number" placeholder="+130"></label>
+        <label class="field" style="flex:1;"><span>Away odds</span><input class="inp" id="ml-a" type="number" placeholder="+130"></label>
+        <label class="field" style="flex:1;"><span>Home odds</span><input class="inp" id="ml-b" type="number" placeholder="-150"></label>
       </div>
       <p class="note" style="margin:0.1rem 0 0;">Winner and dog odds differ — enter each.</p>
     </div>
@@ -710,11 +708,12 @@ function renderCreatePanel() {
     <label class="check"><input type="checkbox" class="bt-toggle" id="bt-sp"> Run line / spread</label>
     <div class="sub-inputs" id="sub-sp" hidden>
       <div class="row">
-        <label class="field" style="flex:1;"><span>Favorite line</span><input class="inp" id="sp-line" type="number" step="0.5" placeholder="-6.5"></label>
-        <label class="field" style="flex:1;"><span>Side A odds</span><input class="inp" id="sp-a" type="number" value="-105"></label>
-        <label class="field" style="flex:1;"><span>Side B odds</span><input class="inp" id="sp-b" type="number" value="-105"></label>
+        <label class="field" style="flex:1;"><span>Favorite</span>
+          <select class="inp" id="sp-fav"><option value="home">Home</option><option value="away">Away</option></select></label>
+        <label class="field" style="flex:1;"><span>Line</span><input class="inp" id="sp-line" type="number" step="0.5" placeholder="6.5"></label>
+        <label class="field" style="flex:1;"><span>Juice</span><input class="inp" id="sp-juice" type="number" value="-105"></label>
       </div>
-      <p class="note" style="margin:0.1rem 0 0;">Side A gets the line you enter; the dog automatically gets the opposite.</p>
+      <p class="note" style="margin:0.1rem 0 0;">Favorite lays the line (−); the dog gets the same number as a +. Both at the juice shown. Away stays on the left, home on the right.</p>
     </div>
 
     <label class="check"><input type="checkbox" class="bt-toggle" id="bt-to"> Total runs (over/under)</label>
@@ -1047,12 +1046,16 @@ async function createEvent() {
     ], settled: false, winnerIdx: null });
   }
   if (document.getElementById("bt-sp").checked) {
-    const line = num("sp-line");
-    if (!sideA || !sideB || line === null) { toast("Run line needs both sides and a line.", "error"); return; }
-    const aLine = line, bLine = -line;
+    const mag = num("sp-line");
+    if (!sideA || !sideB || mag === null) { toast("Run line needs both teams and a line.", "error"); return; }
+    const line = Math.abs(mag);
+    const fav = document.getElementById("sp-fav").value;    // "home" | "away"
+    const juice = intOdds("sp-juice", -105);
+    const awaySign = fav === "away" ? "-" : "+";             // away = sideA (left)
+    const homeSign = fav === "away" ? "+" : "-";             // home = sideB (right)
     bets.push({ label: "Run line", options: [
-      { label: `${sideA} ${aLine > 0 ? "+" : ""}${aLine}`, odds: intOdds("sp-a", -105) },
-      { label: `${sideB} ${bLine > 0 ? "+" : ""}${bLine}`, odds: intOdds("sp-b", -105) },
+      { label: `${sideA} ${awaySign}${line}`, odds: juice },
+      { label: `${sideB} ${homeSign}${line}`, odds: juice },
     ], settled: false, winnerIdx: null });
   }
   if (document.getElementById("bt-to").checked) {
