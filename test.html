@@ -58,10 +58,11 @@
   }
   .brand { font-weight: 800; font-size: 1.15rem; color: var(--ink); letter-spacing: 0.01em; flex-shrink: 0; }
   .brand span { color: var(--cyan); }
-  .topbar nav { display: flex; gap: 0.15rem; flex-wrap: wrap; }
+  .topbar nav { display: flex; gap: 0.05rem; flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  .topbar nav::-webkit-scrollbar { display: none; }
   .topbar nav button {
-    background: none; border: none; color: var(--ink); padding: 0.35rem 0.7rem;
-    border-radius: 6px; font-weight: 600; font-size: 0.92rem;
+    background: none; border: none; color: var(--ink); padding: 0.35rem 0.38rem;
+    border-radius: 6px; font-weight: 600; font-size: 0.78rem; white-space: nowrap;
   }
   .topbar nav button.active { color: var(--cyan); }
   .topbar nav button:hover { color: var(--cyan); }
@@ -198,7 +199,10 @@
   .toast.error { border-color: var(--red); color: var(--red); }
 
   @media (max-width: 560px) {
-    .top-stats { width: 100%; margin-left: 0; justify-content: space-between; }
+    .topbar { row-gap: 0.45rem; }
+    .brand { order: 1; }
+    .top-stats { order: 2; margin-left: auto; }
+    .topbar nav { order: 3; flex-basis: 100%; }
     .seg { margin-left: 0; }
     .page-head { gap: 0.5rem; }
   }
@@ -407,7 +411,7 @@ function render() {
 }
 
 function renderTopbar(bal) {
-  const tabs = [["board","Board"],["active","Active"],["settled","Settled"],["standings","Standings"]];
+  const tabs = [["board","Board"],["active","Active"],["settled","Settled"],["standings","Balances"]];
   if (canCreate()) { tabs.push(["new","New Bets"]); tabs.push(["admin","Admin"]); }
   const roleTag = currentMember.role !== "player"
     ? `<span class="role-tag">${currentMember.role === "commissioner" ? "Commish" : "Lines"}</span>` : "";
@@ -565,7 +569,7 @@ function renderSettled() {
 
 /* ---------- Standings: cumulative + by week (OFP-style) ---------- */
 function renderStandings() {
-  let html = `<div class="page-head"><h1 class="page-title">Standings</h1>
+  let html = `<div class="page-head"><h1 class="page-title">Balances</h1>
     <div class="seg">
       <button class="seg-btn ${standingsView==="cumulative"?"on":""}" data-sview="cumulative">Cumulative</button>
       <button class="seg-btn ${standingsView==="week"?"on":""}" data-sview="week">By Week</button>
