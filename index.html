@@ -109,6 +109,10 @@
   .pill-btn.cyan:hover { background: rgba(91,200,245,0.12); color: var(--cyan); border-color: var(--cyan); }
   .pill-btn.red { color: var(--red); border-color: var(--red); }
   .pill-btn.red:hover { background: rgba(229,105,122,0.12); color: var(--red); border-color: var(--red); }
+  .pill-btn.green { color: var(--green); border-color: var(--green); }
+  .pill-btn.green:hover { background: rgba(88,196,138,0.12); color: var(--green); border-color: var(--green); }
+  .pill-btn.amber { color: var(--orange); border-color: var(--orange); }
+  .pill-btn.amber:hover { background: rgba(224,164,74,0.12); color: var(--orange); border-color: var(--orange); }
 
   .group-head { display: flex; align-items: center; gap: 0.5rem; cursor: pointer; flex-wrap: nowrap; user-select: none; }
   .group-head .caret { color: var(--muted); font-size: 0.8rem; width: 0.9rem; flex-shrink: 0; }
@@ -821,10 +825,10 @@ function renderManageCard(ev) {
     if (isCommish() && (!bet.settled || pending.length > 0)) {
       html += `<div class="opt-row">`;
       (bet.options || []).forEach((opt, oIdx) => {
-        html += `<button class="btn-green btn-sm" data-settleev="${ev.id}" data-bidx="${bIdx}" data-oidx="${oIdx}">${esc(opt.label)} won</button>`;
+        html += `<button class="pill-btn green" data-settleev="${ev.id}" data-bidx="${bIdx}" data-oidx="${oIdx}">${esc(opt.label)}</button>`;
       });
-      html += `<button class="btn-red btn-sm" data-losev="${ev.id}" data-bidx="${bIdx}">No winner</button>`;
-      html += `<button class="btn-orange btn-sm" data-pushev="${ev.id}" data-bidx="${bIdx}">Push</button>`;
+      html += `<button class="pill-btn red" data-losev="${ev.id}" data-bidx="${bIdx}">No winner</button>`;
+      html += `<button class="pill-btn amber" data-pushev="${ev.id}" data-bidx="${bIdx}">Push</button>`;
       html += `</div>`;
     } else if (!isCommish()) {
       html += `<div class="card-sub">${bet.settled ? "Settled" : pending.length + " pending — Rex grades"}</div>`;
