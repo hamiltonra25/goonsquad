@@ -103,9 +103,11 @@
   .phase-tag.locked { color: var(--red); border-color: var(--red); }
   .phase-tag.settled { color: var(--cyan); border-color: var(--cyan); }
 
-  .group-head { display: flex; align-items: center; gap: 0.5rem; cursor: pointer; flex-wrap: wrap; user-select: none; }
+  .group-head { display: flex; align-items: center; gap: 0.5rem; cursor: pointer; flex-wrap: nowrap; user-select: none; }
   .group-head .caret { color: var(--muted); font-size: 0.8rem; width: 0.9rem; flex-shrink: 0; }
-  .group-head .group-sum { margin-left: auto; font-size: 0.82rem; color: var(--muted); font-weight: 700; font-variant-numeric: tabular-nums; }
+  .group-head .event-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .group-head .phase-tag { flex-shrink: 0; }
+  .group-head .group-sum { margin-left: auto; font-size: 0.82rem; color: var(--muted); font-weight: 700; font-variant-numeric: tabular-nums; flex-shrink: 0; white-space: nowrap; }
   .team-sub { font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; color: var(--cyan); margin: 0.7rem 0 0.1rem; }
 
   .bet-block { border-top: 1px solid var(--line); padding: 0.6rem 0 0.2rem; margin-top: 0.5rem; }
@@ -257,6 +259,7 @@ const MEMBERS = [
 ];
 /* ============================================================ */
 
+const TITLE_MAX = 29;   // keeps every event title on one line (len of "Nice Ash vs. Oakwood Warriors")
 const COLORS   = ["#5bc8f5", "#58c48a", "#e0a44a", "#b58be0", "#e5697a", "#6fb2e8"];
 const BGS      = ["#1f3a55", "#1f3f33", "#3f3320", "#33264a", "#3f2430", "#223048"];
 
@@ -729,8 +732,8 @@ function renderAdmin() {
 function renderCreatePanel() {
   const d = createDraft || {};
   return `<div class="admin-panel"><h3>Create event</h3>
-    <label class="field"><span>Event title</span>
-      <input class="inp" id="ce-title" placeholder="e.g. Chiefs @ Bills" value="${esc(d.title||"")}"></label>
+    <label class="field"><span>Event title (max ${TITLE_MAX} chars)</span>
+      <input class="inp" id="ce-title" maxlength="${TITLE_MAX}" placeholder="e.g. Chiefs @ Bills" value="${esc(d.title||"")}"></label>
     <div class="row">
       <label class="field" style="flex:1;min-width:8rem;"><span>Away (left)</span>
         <input class="inp" id="ce-a" placeholder="Chiefs" value="${esc(d.sideA||"")}"></label>
@@ -837,7 +840,7 @@ function renderManageCard(ev) {
 
 function renderEditPanel(ev) {
   let html = `<div class="admin-panel" style="border:1px solid var(--cyan);"><h3>Editing: ${esc(ev.title)}</h3>
-    <label class="field"><span>Title</span><input class="inp" id="edit-title" value="${esc(ev.title)}"></label>
+    <label class="field"><span>Title (max ${TITLE_MAX} chars)</span><input class="inp" id="edit-title" maxlength="${TITLE_MAX}" value="${esc(ev.title)}"></label>
     <label class="field"><span>Start date &amp; time</span><input class="inp" id="edit-start" type="datetime-local" value="${toDatetimeLocal(ev.startTime)}"></label>
     <label class="check"><input type="checkbox" id="edit-opennow" ${ev.ignoreTimeLock?"checked":""}> Open for betting now (ignore start time)</label>`;
   (ev.bets || []).forEach((bet, bIdx) => {
@@ -1104,6 +1107,7 @@ async function createEvent() {
   const startTime = startRaw ? new Date(startRaw).getTime() : null;
   const openNow = document.getElementById("ce-opennow").checked;
   if (!title) { toast("Enter an event title.", "error"); return; }
+  if (title.length > TITLE_MAX) { toast(`Title too long — keep it to ${TITLE_MAX} characters.`, "error"); return; }
 
   const bets = [];
   const num = id => { const v = parseFloat(document.getElementById(id).value); return isNaN(v) ? null : v; };
@@ -1190,6 +1194,7 @@ async function saveEdit() {
   if (!ev) return;
   const title = (document.getElementById("edit-title").value || "").trim();
   if (!title) { toast("Title can't be empty.", "error"); return; }
+  if (title.length > TITLE_MAX) { toast(`Title too long — keep it to ${TITLE_MAX} characters.`, "error"); return; }
   const startRaw = document.getElementById("edit-start").value;
   const startTime = startRaw ? new Date(startRaw).getTime() : null;
   const openNow = document.getElementById("edit-opennow").checked;
