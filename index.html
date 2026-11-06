@@ -278,6 +278,11 @@ const MEMBERS = [
   { legacyId: "AK",   name: "AK",   email: "klemensam14@gmail.com",  role: "player" },
   { legacyId: "Brez", name: "Brez", email: "cbrezovar11@gmail.com",  role: "linemaker" },
 ];
+
+/* Paste a Zapier "Catch Hook" URL here to text the group when a new event is posted.
+   Leave "" to disable. The app POSTs the event details to this URL on create;
+   the Zap turns it into an SMS. Nothing else to wire. */
+const NOTIFY_WEBHOOK = "";
 /* ============================================================ */
 
 const TITLE_MAX = 29;   // keeps every event title on one line (len of "Nice Ash vs. Oakwood Warriors")
@@ -1260,10 +1265,27 @@ async function createEvent() {
     bets, locked: false, archived: false,
     createdBy: myId(), createdAt: Date.now(),
   });
+  notifyNewEvent({ title, when: startTime ? fmtDateLabel(startTime) : (openNow ? "live now" : "") });
   createDraft = null;
   toast("Event created");
   activeTab = "board";
   render();
+}
+
+/* Fire the group-SMS webhook (Zapier/Make Catch Hook). Fire-and-forget: a
+   notification failure must never block posting the event. Uses urlencoded body
+   so a no-cors browser POST is allowed; the Zap reads the fields by name. */
+function notifyNewEvent(info) {
+  if (!NOTIFY_WEBHOOK) return;
+  try {
+    const body = new URLSearchParams({
+      event: info.title || "",
+      when: info.when || "",
+      by: (currentMember && currentMember.name) || "",
+      link: "https://goonsquadbet.com",
+    });
+    fetch(NOTIFY_WEBHOOK, { method: "POST", mode: "no-cors", body }).catch(() => {});
+  } catch (_) { /* ignore */ }
 }
 
 async function saveEdit() {
