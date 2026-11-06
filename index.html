@@ -121,6 +121,16 @@
   .group-head .group-sum { margin-left: auto; font-size: 0.82rem; color: var(--muted); font-weight: 700; font-variant-numeric: tabular-nums; flex-shrink: 0; white-space: nowrap; }
   .team-sub { font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; color: var(--cyan); margin: 0.7rem 0 0.1rem; }
 
+  /* Sportsbook odds grid (Board) */
+  .odds-grid { display: grid; grid-template-columns: minmax(0,1.5fr) 1fr 1fr 1fr; gap: 0.4rem; align-items: center; margin-top: 0.6rem; }
+  .odds-grid .og-h { font-size: 0.6rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); text-align: center; }
+  .odds-grid .og-team { font-weight: 700; font-size: 0.95rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .og-cell { border: 1px solid var(--btn-border); background: var(--btn); border-radius: 8px; padding: 0.55rem 0.2rem; text-align: center; font-weight: 700; font-size: 0.92rem; color: var(--ink); font-variant-numeric: tabular-nums; cursor: pointer; }
+  .og-cell.pos { color: var(--green); } .og-cell.neg { color: var(--red); }
+  .og-cell.mine { border-color: var(--chip-bg); background: #31548022; }
+  .og-cell:hover:not(.empty) { border-color: var(--chip-bg); }
+  .og-cell.empty { opacity: 0.35; cursor: default; color: var(--muted); }
+
   .bet-block { border-top: 1px solid var(--line); padding: 0.6rem 0 0.2rem; margin-top: 0.5rem; }
   .bet-label { font-size: 0.85rem; font-weight: 700; color: var(--muted); margin-bottom: 0.45rem; text-transform: uppercase; letter-spacing: 0.03em; }
   .opt-row { display: flex; gap: 0.5rem; flex-wrap: wrap; }
@@ -469,9 +479,24 @@ function renderBoard() {
 
     const betsArr = ev.bets || [];
     const open = betsArr.map((_, i) => i).filter(i => !betsArr[i].settled);
-    const ungrouped = open.filter(i => !betsArr[i].group);
+
+    // Standard markets → compact grid (teams as rows, Money/Spread/Total as columns).
+    const mlI = open.find(i => /^moneyline$/i.test(betsArr[i].label));
+    const spI = open.find(i => /^(run line|spread)$/i.test(betsArr[i].label));
+    const toI = open.find(i => /^total/i.test(betsArr[i].label));
+    const away = ev.sideA || (mlI != null ? betsArr[mlI].options[0]?.label : null);
+    const home = ev.sideB || (mlI != null ? betsArr[mlI].options[1]?.label : null);
+    const consumed = new Set();
+    if (away && home && (mlI != null || spI != null || toI != null)) {
+      [mlI, spI, toI].forEach(i => { if (i != null) consumed.add(i); });
+      html += boardGrid(ev, betsArr, mlI, spI, toI, away, home);
+    }
+
+    // Everything else (props, non-standard lines) → below, grouped by team.
+    const rest = open.filter(i => !consumed.has(i));
+    const ungrouped = rest.filter(i => !betsArr[i].group);
     const teams = [];
-    open.filter(i => betsArr[i].group).forEach(i => {
+    rest.filter(i => betsArr[i].group).forEach(i => {
       let t = teams.find(x => x.name === betsArr[i].group);
       if (!t) { t = { name: betsArr[i].group, items: [] }; teams.push(t); }
       t.items.push(i);
@@ -484,6 +509,29 @@ function renderBoard() {
     html += `</div>`;
   });
   return html;
+}
+
+function boardGrid(ev, betsArr, mlI, spI, toI, away, home) {
+  const cell = (bIdx, oIdx, disp, kind) => {
+    if (bIdx == null || !betsArr[bIdx].options[oIdx]) return `<div class="og-cell empty">—</div>`;
+    const opt = betsArr[bIdx].options[oIdx];
+    const mine = cBets.find(b => b.player === myId() && b.eventId === ev.id && b.betIdx === bIdx && b.optIdx === oIdx && b.status === "pending");
+    let cls = "og-cell" + (mine ? " mine" : "");
+    if (kind === "money") cls += opt.odds > 0 ? " pos" : " neg";
+    return `<div class="${cls}" data-event="${ev.id}" data-bidx="${bIdx}" data-oidx="${oIdx}"
+      data-odds="${opt.odds}" data-label="${esc(opt.label)}" data-betlabel="${esc(betsArr[bIdx].label)}"
+      data-eventtitle="${esc(ev.title)}" data-locked="0">${disp}</div>`;
+  };
+  const money = (b, o) => (b != null && betsArr[b].options[o]) ? fmtOdds(betsArr[b].options[o].odds) : "";
+  const spread = (b, o) => { if (b == null || !betsArr[b].options[o]) return ""; const m = String(betsArr[b].options[o].label).match(/([+-]?\d+(?:\.\d+)?)\s*$/); return m ? m[1] : betsArr[b].options[o].label; };
+  const total = (b, o) => { if (b == null || !betsArr[b].options[o]) return ""; const lbl = betsArr[b].options[o].label; const m = lbl.match(/(\d+(?:\.\d+)?)/); const n = m ? m[1] : ""; return /^over/i.test(lbl) ? ("O " + n) : ("U " + n); };
+  return `<div class="odds-grid">
+    <div class="og-h"></div><div class="og-h">Money</div><div class="og-h">Spread</div><div class="og-h">Total</div>
+    <div class="og-team">${esc(away)}</div>
+    ${cell(mlI,0,money(mlI,0),"money")}${cell(spI,0,spread(spI,0))}${cell(toI,0,total(toI,0))}
+    <div class="og-team">${esc(home)}</div>
+    ${cell(mlI,1,money(mlI,1),"money")}${cell(spI,1,spread(spI,1))}${cell(toI,1,total(toI,1))}
+  </div>`;
 }
 
 function boardBetBlock(ev, bet, bIdx) {
@@ -990,9 +1038,9 @@ function wireMain() {
     render();
   }));
 
-  // Board: tap an option → bet slip
-  appEl.querySelectorAll(".opt-pill").forEach(pill => pill.addEventListener("click", () => {
-    if (pill.dataset.locked === "1") return;
+  // Board: tap an option pill or grid cell → bet slip
+  appEl.querySelectorAll(".opt-pill, .og-cell").forEach(pill => pill.addEventListener("click", () => {
+    if (!pill.dataset.event || pill.dataset.locked === "1") return;   // empty grid cells carry no data
     selected = {
       eventId: pill.dataset.event, betIdx: +pill.dataset.bidx, optIdx: +pill.dataset.oidx,
       odds: parseInt(pill.dataset.odds, 10), label: pill.dataset.label,
