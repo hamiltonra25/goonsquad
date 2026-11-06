@@ -237,7 +237,7 @@ import {
   onSnapshot, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import {
-  getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut,
+  getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut,
   sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink, sendPasswordResetEmail, updatePassword
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
@@ -888,16 +888,15 @@ function renderSignIn() {
     <p class="auth-sub">Real-money wager pool.</p>
     <div class="auth-card">
       <div class="callout" style="margin-bottom:0.9rem;">
-        <strong>First time here?</strong> Enter your email below and tap
-        <strong>“Email me a sign-in link.”</strong> The link signs you in and
-        creates your account — no password needed to start.
+        <strong>First time here?</strong> Enter your email, pick a password, and tap
+        <strong>“Create my account.”</strong> No email to wait for — you're in right away.
       </div>
       <label class="field"><span>Email</span><input class="inp" id="si-email" type="email" autocomplete="email" placeholder="you@example.com"></label>
-      <button class="btn btn-block" id="si-link">Email me a sign-in link</button>
-      <div class="divider" style="text-align:center;">— or, if you've already set a password —</div>
-      <label class="field"><span>Password</span><input class="inp" id="si-pass" type="password" autocomplete="current-password"></label>
-      <button class="btn-ghost btn-block" id="si-go">Sign in with password</button>
-      <button class="ghost-link" id="si-reset" style="margin-top:0.6rem;display:block;">Reset my password (only works once your account exists)</button>
+      <label class="field"><span>Password</span><input class="inp" id="si-pass" type="password" autocomplete="current-password" placeholder="6+ characters"></label>
+      <button class="btn btn-block" id="si-go">Sign in</button>
+      <button class="btn-ghost btn-block" id="si-create" style="margin-top:0.5rem;">Create my account</button>
+      <button class="ghost-link" id="si-reset" style="margin-top:0.7rem;display:block;">Forgot password</button>
+      <button class="ghost-link" id="si-link" style="margin-top:0.3rem;display:block;">Email me a sign-in link instead</button>
       <div id="si-msg"></div>
     </div>
     <p class="auth-sub" style="font-size:0.78rem;">Not on the roster? If it says you're not a member, ask Rex to add your email.</p>
@@ -928,20 +927,28 @@ function wireSignIn() {
     try { await signInWithEmailAndPassword(auth, email, passEl.value); }
     catch (e) { show("err", friendlyAuthError(e)); }
   });
+  document.getElementById("si-create")?.addEventListener("click", async () => {
+    const email = (emailEl.value || "").trim();
+    const pw = passEl.value || "";
+    if (!email) { show("err", "Enter your email first."); return; }
+    if (pw.length < 6) { show("err", "Pick a password of at least 6 characters."); return; }
+    try { await createUserWithEmailAndPassword(auth, email, pw); }
+    catch (e) { show("err", friendlyAuthError(e)); }
+  });
+  document.getElementById("si-reset")?.addEventListener("click", async () => {
+    const email = (emailEl.value || "").trim();
+    if (!email) { show("err", "Enter your email first, then tap this."); return; }
+    try { await sendPasswordResetEmail(auth, email); show("ok", `Sent a reset link to <strong>${esc(email)}</strong> (check junk).`); }
+    catch (e) { show("err", friendlyAuthError(e)); }
+  });
   document.getElementById("si-link")?.addEventListener("click", async () => {
     const email = (emailEl.value || "").trim();
     if (!email) { show("err", "Enter your email first, then tap this."); return; }
     try {
       await sendSignInLinkToEmail(auth, email, { url: window.location.href.split("?")[0], handleCodeInApp: true });
       window.localStorage.setItem("gsEmailForLink", email);
-      show("ok", `Check <strong>${esc(email)}</strong> and tap the link on this device. Look in junk if it's not there in a minute.`);
+      show("ok", `Check <strong>${esc(email)}</strong> and tap the link on this device.`);
     } catch (e) { show("err", friendlyAuthError(e)); }
-  });
-  document.getElementById("si-reset")?.addEventListener("click", async () => {
-    const email = (emailEl.value || "").trim();
-    if (!email) { show("err", "Enter your email first, then tap this."); return; }
-    try { await sendPasswordResetEmail(auth, email); show("ok", `Sent a password link to <strong>${esc(email)}</strong>.`); }
-    catch (e) { show("err", friendlyAuthError(e)); }
   });
   passEl?.addEventListener("keydown", e => { if (e.key === "Enter") document.getElementById("si-go").click(); });
 }
@@ -950,10 +957,15 @@ function wireNotMember() {
 }
 function friendlyAuthError(e) {
   const code = e && e.code ? e.code : "";
+  if (code === "auth/email-already-in-use")
+    return "You already have an account. Enter your password and tap Sign in — or use Forgot password.";
   if (code === "auth/invalid-credential" || code === "auth/wrong-password" || code === "auth/user-not-found")
-    return "That email and password don't match. Use the sign-in link or reset your password below.";
+    return "Email and password don't match. First time? Pick a password and tap “Create my account.”";
+  if (code === "auth/weak-password") return "Password needs at least 6 characters.";
   if (code === "auth/too-many-requests") return "Too many attempts — wait a few minutes.";
   if (code === "auth/invalid-email") return "That doesn't look like a valid email.";
+  if (code === "auth/quota-exceeded")
+    return "The email-link service is maxed out for today — use a password instead (Create my account / Sign in), which needs no email.";
   return "Couldn't sign in" + (code ? ` (${code})` : "") + ".";
 }
 
