@@ -1396,17 +1396,19 @@ function showPassSheet() {
 function showSlip() {
   document.querySelector(".slip")?.remove();
   if (!selected) return;
+  const existing = cBets.find(b => b.player === myId() && b.eventId === selected.eventId && b.betIdx === selected.betIdx && b.optIdx === selected.optIdx && b.status === "pending");
   const slip = document.createElement("div");
   slip.className = "slip";
   slip.innerHTML = `<div class="slip-inner">
     <div class="slip-head">
       <div><span class="lbl">${esc(selected.label)}</span> <span class="od">${fmtOdds(selected.odds)}</span>
-        <div class="sub">${esc(selected.eventTitle)} — ${esc(selected.betLabel)}</div></div>
+        <div class="sub">${esc(selected.eventTitle)} — ${esc(selected.betLabel)}</div>
+        ${existing ? `<div class="sub">You have ${fmtMoney(existing.wager)} on this — this adds to it.</div>` : ""}</div>
       <button class="slip-close" id="slip-close">✕</button>
     </div>
     <div class="slip-row">
-      <input type="number" id="slip-wager" placeholder="Wager ($)" min="1" step="0.01">
-      <button class="btn" id="slip-place">Place bet</button>
+      <input type="number" id="slip-wager" placeholder="${existing ? "Add ($)" : "Wager ($)"}" min="1" step="0.01">
+      <button class="btn" id="slip-place">${existing ? "Add to bet" : "Place bet"}</button>
     </div>
     <div class="slip-calc" id="slip-calc"></div>
     <div class="slip-err" id="slip-err"></div>
@@ -1416,26 +1418,31 @@ function showSlip() {
   wager.focus();
   wager.addEventListener("input", () => {
     const a = parseFloat(wager.value) || 0;
-    document.getElementById("slip-calc").textContent = a > 0 ? `To win ${fmtMoney(calcPayout(a, selected.odds))}` : "";
+    const calc = document.getElementById("slip-calc");
+    if (a <= 0) { calc.textContent = ""; return; }
+    calc.textContent = existing
+      ? `New stake ${fmtMoney(existing.wager + a)} · to win ${fmtMoney(calcPayout(existing.wager + a, selected.odds))}`
+      : `To win ${fmtMoney(calcPayout(a, selected.odds))}`;
   });
   document.getElementById("slip-close").addEventListener("click", () => { slip.remove(); selected = null; });
   document.getElementById("slip-place").addEventListener("click", async () => {
     const amt = parseFloat(wager.value);
     const err = document.getElementById("slip-err");
-    if (!amt || amt < 1) { err.textContent = "Enter a valid wager."; return; }
-    if (cBets.find(b => b.player === myId() && b.eventId === selected.eventId && b.betIdx === selected.betIdx && b.optIdx === selected.optIdx && b.status === "pending")) {
-      err.textContent = "You already have this bet."; return;
+    if (!amt || amt < 1) { err.textContent = "Enter a valid amount."; return; }
+    if (existing) {
+      const newWager = existing.wager + amt;
+      await updateDoc(doc(db, "custom_bets", existing.id), { wager: newWager, toWin: calcPayout(newWager, existing.odds) });
+    } else {
+      await addDoc(collection(db, "custom_bets"), {
+        player: myId(), eventId: selected.eventId, eventTitle: selected.eventTitle,
+        betIdx: selected.betIdx, betLabel: selected.betLabel, optIdx: selected.optIdx,
+        optionLabel: selected.label, odds: selected.odds, wager: amt, toWin: calcPayout(amt, selected.odds),
+        status: "pending", createdAt: serverTimestamp(),
+      });
     }
-    const toWin = calcPayout(amt, selected.odds);
-    await addDoc(collection(db, "custom_bets"), {
-      player: myId(), eventId: selected.eventId, eventTitle: selected.eventTitle,
-      betIdx: selected.betIdx, betLabel: selected.betLabel, optIdx: selected.optIdx,
-      optionLabel: selected.label, odds: selected.odds, wager: amt, toWin,
-      status: "pending", createdAt: serverTimestamp(),
-    });
     await setDoc(doc(db, "custom_balances", myId()), { amount: (cBalances[myId()] ?? 0) - amt });
     slip.remove(); selected = null;
-    toast("Bet placed");
+    toast(existing ? "Added to your bet" : "Bet placed");
   });
 }
 
